@@ -2,6 +2,9 @@ using System.CommandLine;
 using System.CommandLine.NamingConventionBinder;
 using System.Text.Json;
 using HomeStack.Core.Models;
+using HomeStack.Scanner.Docker;
+using HomeStack.Scanner.Services;
+using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console;
 
 namespace HomeStack.Cli;
@@ -10,6 +13,9 @@ internal class Program
 {
     static async Task<int> Main(string[] args)
     {
+        // Setup dependency injection
+        var services = ConfigureServices();
+        
         // Setup the root command
         var rootCommand = new RootCommand("HomeStack - A tool for homelab discovery and configuration");
         
@@ -23,6 +29,21 @@ internal class Program
         
         // Execute the command pipeline
         return await rootCommand.InvokeAsync(args);
+    }
+
+    private static ServiceProvider ConfigureServices()
+    {
+        var services = new ServiceCollection();
+        
+        // Register scanners
+        services.AddSingleton<DockerScanner>();
+        services.AddSingleton<Core.Interfaces.IDockerScanner>(sp => sp.GetRequiredService<DockerScanner>());
+        
+        // Register scan service
+        services.AddSingleton<ScanService>();
+        services.AddSingleton<Core.Interfaces.IScanService>(sp => sp.GetRequiredService<ScanService>());
+        
+        return services.BuildServiceProvider();
     }
 
     private static Command CreateScanCommand()
@@ -195,115 +216,81 @@ internal class Program
                 AnsiConsole.MarkupLine($"- [green]pfSense:[/] {options.PfSenseHost}");
             AnsiConsole.WriteLine();
             
-            // Create mock scan results for now
-            // This will be replaced with actual scanner implementations
-            var scanResults = new ScanResults();
+            // Create Docker scanner
+            var dockerScanner = new DockerScanner();
             
-            // Add some sample data for demonstration
+            // Check if Docker is available
             if (options.Docker)
             {
                 AnsiConsole.Status()
-                    .Start("Scanning Docker containers...", ctx =>
+                    .Start("Checking Docker availability...", ctx =>
                     {
-                        // Mock docker containers
-                        scanResults.Containers.Add(new ContainerInfo
-                        {
-                            Id = "abc123",
-                            Name = "plex",
-                            Image = "linuxserver/plex",
-                            IpAddress = "172.17.0.2",
-                            Status = "running",
-                            PortMappings = new List<PortMapping>
-                            {
-                                new() { ContainerPort = 32400, HostPort = 32400, Protocol = "tcp" }
-                            },
-                            Health = ServiceHealth.Healthy
-                        });
+                        bool isAvailable = dockerScanner.IsDockerAvailableAsync(
+                            options.DockerHost, options.DockerCert, options.DockerApi).GetAwaiter().GetResult();
                         
-                        scanResults.Containers.Add(new ContainerInfo
+                        if (!isAvailable)
                         {
-                            Id = "def456",
-                            Name = "sonarr",
-                            Image = "linuxserver/sonarr",
-                            IpAddress = "172.17.0.3",
-                            Status = "running",
-                            PortMappings = new List<PortMapping>
-                            {
-                                new() { ContainerPort = 8989, HostPort = 8989, Protocol = "tcp" }
-                            },
-                            Health = ServiceHealth.Healthy
-                        });
+                            ctx.Status("Docker is not available");
+                            throw new Exception("Docker is not available. Please check the Docker daemon or connection settings.");
+                        }
                         
-                        ctx.Status("Found 2 Docker containers");
-                        Thread.Sleep(1000); // Simulate work
+                        ctx.Status("Docker is available");
                     });
             }
             
-            if (options.Unraid)
-            {
-                AnsiConsole.Status()
-                    .Start("Scanning Unraid server...", ctx =>
-                    {
-                        scanResults.UnraidInfo = new UnraidInfo
-                        {
-                            Hostname = options.UnraidHost!,
-                            Version = "6.11.5",
-                            ArrayStatus = "Started",
-                            DockerEnabled = true
-                        };
-                        
-                        ctx.Status("Successfully scanned Unraid server");
-                        Thread.Sleep(1000); // Simulate work
-                    });
-            }
+            // Create scan service
+            var scanService = new ScanService(dockerScanner);
             
-            if (options.PfSense)
-            {
-                AnsiConsole.Status()
-                    .Start("Scanning pfSense router...", ctx =>
-                    {
-                        scanResults.PfSenseInfo = new PfSenseInfo
-                        {
-                            Hostname = options.PfSenseHost!,
-                            Version = "2.7.0",
-                            Domain = "local"
-                        };
-                        
-                        // Add some mock DNS entries
-                        scanResults.DnsHostOverrides.Add(new DnsHostOverride
-                        {
-                            Hostname = "plex",
-                            Domain = "local",
-                            IpAddress = "192.168.1.100",
-                            Description = "Plex Media Server"
-                        });
-                        
-                        scanResults.DnsHostOverrides.Add(new DnsHostOverride
-                        {
-                            Hostname = "sonarr",
-                            Domain = "local",
-                            IpAddress = "192.168.1.101",
-                            Description = "Sonarr"
-                        });
-                        
-                        // Add some mock DHCP leases
-                        scanResults.DhcpLeases.Add(new DhcpLease
-                        {
-                            IpAddress = "192.168.1.100",
-                            MacAddress = "00:11:22:33:44:55",
-                            Hostname = "unraid-server",
-                            IsStatic = true
-                        });
-                        
-                        ctx.Status("Successfully scanned pfSense router");
-                        Thread.Sleep(1000); // Simulate work
-                    });
-            }
+            // Perform the scan
+            var scanResults = await AnsiConsole.Status()
+                .StartAsync("Scanning...", async ctx =>
+                {
+                    var results = await scanService.ScanAllAsync(
+                        options.Docker,
+                        options.Unraid,
+                        options.PfSense,
+                        options.UnraidHost,
+                        options.UnraidUser,
+                        options.UnraidPass,
+                        options.UnraidPort,
+                        options.PfSenseHost,
+                        options.PfSenseUser,
+                        options.PfSensePass,
+                        options.PfSensePort,
+                        options.DockerHost,
+                        options.DockerCert,
+                        options.DockerApi);
+                    
+                    ctx.Status("Scan completed");
+                    return results;
+                });
             
-            // Display scan results
+            // Display scan results summary
             AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine("[green]Scan completed successfully.[/]");
             
+            // Display errors and warnings if any
+            if (scanResults.Errors.Count > 0)
+            {
+                AnsiConsole.WriteLine();
+                AnsiConsole.MarkupLine("[red]Errors:[/]");
+                foreach (var error in scanResults.Errors)
+                {
+                    AnsiConsole.MarkupLine($"- [red]{error}[/]");
+                }
+            }
+            
+            if (scanResults.Warnings.Count > 0)
+            {
+                AnsiConsole.WriteLine();
+                AnsiConsole.MarkupLine("[yellow]Warnings:[/]");
+                foreach (var warning in scanResults.Warnings)
+                {
+                    AnsiConsole.MarkupLine($"- [yellow]{warning}[/]");
+                }
+            }
+            
+            // Display scan results
             var table = new Table()
                 .Title("Scan Results Summary")
                 .BorderColor(Color.Green)
@@ -316,6 +303,7 @@ internal class Program
             table.AddRow("DNS Host Overrides", scanResults.DnsHostOverrides.Count.ToString());
             table.AddRow("DHCP Leases", scanResults.DhcpLeases.Count.ToString());
             table.AddRow("Network Interfaces", scanResults.NetworkInterfaces.Count.ToString());
+            table.AddRow("Proxy Configurations", scanResults.ProxyConfigs.Count.ToString());
             
             AnsiConsole.Write(table);
             
