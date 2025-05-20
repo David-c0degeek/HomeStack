@@ -2,7 +2,9 @@
 
 ## Current Status
 
-HomeStack is currently in active development with core functionality implemented. The CLI is functional for scanning Docker containers, Unraid servers, and pfSense routers, as well as generating various configuration files.
+HomeStack is currently in active development with core functionality fully implemented and operational. The CLI is functional for scanning Docker containers, Unraid servers, and pfSense routers, as well as generating various configuration files.
+
+The project has been successfully upgraded to .NET 9.0.
 
 ## Completed
 
@@ -11,6 +13,7 @@ HomeStack is currently in active development with core functionality implemented
 - ✅ Core interfaces defined for Docker, Unraid, and pfSense scanners
 - ✅ Data models defined for all key components
 - ✅ Template-based configuration generator
+- ✅ Build system fully functional with .NET 9.0
 
 ### Docker Integration
 - ✅ Scanner for Docker containers
@@ -41,18 +44,20 @@ HomeStack is currently in active development with core functionality implemented
 - ✅ Command-line interface for configuration generation
 - ✅ JSON output for scan results
 - ✅ Configuration output to files
+- ✅ Upgraded to .NET 9.0 for latest features and performance improvements
 
 ## In Progress
 
+### UI Development
+- 🔄 Blazor UI implementation
+- 🔄 Service visualization
+- 🔄 Network map viewing
+- 🔄 Integration with scanning services
+
 ### Scanner Improvements
-- 🔄 Async/await cleanup for scanner methods
+- 🔄 Async/await optimizations for scanner methods
 - 🔄 Better error handling and null checking
 - 🔄 Additional VPN detection methods
-
-### UX Improvements
-- 🔄 Better CLI output formatting
-- 🔄 Progress indicators during scanning
-- 🔄 Code cleanup for Program.cs
 
 ## To Do
 
@@ -68,11 +73,11 @@ HomeStack is currently in active development with core functionality implemented
 - [ ] Unit tests for all components
 - [ ] Integration tests
 
-### Web UI
-- [ ] Basic Blazor UI for service visualization
-- [ ] Network map visualization
+### Web UI Features
 - [ ] Service health dashboard
 - [ ] Configuration editor
+- [ ] Real-time service status updates
+- [ ] Direct application of configurations
 
 ### Additional Integrations
 - [ ] Support for Traefik reverse proxy

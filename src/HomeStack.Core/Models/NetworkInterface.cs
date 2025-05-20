@@ -6,62 +6,37 @@ namespace HomeStack.Core.Models;
 public class NetworkInterface
 {
     /// <summary>
-    /// Interface name (e.g., eth0, em0, LAN, WAN)
+    /// Gets or sets the interface name
     /// </summary>
     public string Name { get; set; } = string.Empty;
     
     /// <summary>
-    /// Interface description
+    /// Gets or sets the interface description
     /// </summary>
-    public string? Description { get; set; }
+    public string Description { get; set; } = string.Empty;
     
     /// <summary>
-    /// Interface MAC address
+    /// Gets or sets the IP address of the interface
     /// </summary>
-    public string? MacAddress { get; set; }
+    public string IpAddress { get; set; } = string.Empty;
     
     /// <summary>
-    /// Interface IP address
+    /// Gets or sets the subnet mask
     /// </summary>
-    public string? IpAddress { get; set; }
+    public string SubnetMask { get; set; } = string.Empty;
     
     /// <summary>
-    /// Interface subnet mask
+    /// Gets or sets the MAC address
     /// </summary>
-    public string? SubnetMask { get; set; }
+    public string MacAddress { get; set; } = string.Empty;
     
     /// <summary>
-    /// Interface gateway address
-    /// </summary>
-    public string? Gateway { get; set; }
-    
-    /// <summary>
-    /// Whether this interface has DHCP server enabled
-    /// </summary>
-    public bool HasDhcpServer { get; set; }
-    
-    /// <summary>
-    /// Whether this interface is enabled
+    /// Gets or sets a value indicating whether the interface is enabled
     /// </summary>
     public bool IsEnabled { get; set; }
     
     /// <summary>
-    /// Whether this interface is a WAN (Internet-facing) interface
+    /// Gets or sets a value indicating whether the interface is up
     /// </summary>
-    public bool IsWan { get; set; }
-    
-    /// <summary>
-    /// Maximum transmission unit (MTU) for this interface
-    /// </summary>
-    public int? Mtu { get; set; }
-    
-    /// <summary>
-    /// Media type (e.g., "1000baseT full-duplex")
-    /// </summary>
-    public string? Media { get; set; }
-    
-    /// <summary>
-    /// Status of the interface (up, down)
-    /// </summary>
-    public string? Status { get; set; }
+    public bool IsUp { get; set; }
 }

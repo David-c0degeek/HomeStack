@@ -1,63 +1,56 @@
+using HomeStack.Core.Models;
+
 namespace HomeStack.Core.Interfaces;
 
 /// <summary>
-/// Interface for the pfSense scanner service
+/// Interface for scanning pfSense router
 /// </summary>
 public interface IPfSenseScanner
 {
     /// <summary>
-    /// Gets pfSense system information
+    /// Checks if pfSense is available via SSH
     /// </summary>
-    /// <param name="host">pfSense hostname or IP address</param>
+    /// <param name="hostname">pfSense hostname or IP address</param>
     /// <param name="username">SSH username</param>
     /// <param name="password">SSH password</param>
     /// <param name="port">SSH port (default: 22)</param>
-    /// <returns>pfSense system information</returns>
-    Task<Models.PfSenseInfo> GetSystemInfoAsync(
-        string host, 
-        string username, 
-        string password, 
-        int port = 22);
-
+    /// <returns>True if pfSense is available, false otherwise</returns>
+    Task<bool> IsPfSenseAvailableAsync(string hostname, string? username = null, string? password = null, int port = 22);
+    
     /// <summary>
-    /// Gets pfSense DNS host overrides
+    /// Gets system information from pfSense
     /// </summary>
-    /// <param name="host">pfSense hostname or IP address</param>
+    /// <param name="hostname">pfSense hostname or IP address</param>
     /// <param name="username">SSH username</param>
     /// <param name="password">SSH password</param>
-    /// <param name="port">SSH port (default: 22)</param>
+    /// <returns>pfSense information</returns>
+    Task<PfSenseInfo> GetSystemInfoAsync(string hostname, string username, string password);
+    
+    /// <summary>
+    /// Gets DNS host overrides from pfSense
+    /// </summary>
+    /// <param name="hostname">pfSense hostname or IP address</param>
+    /// <param name="username">SSH username</param>
+    /// <param name="password">SSH password</param>
     /// <returns>List of DNS host overrides</returns>
-    Task<IEnumerable<Models.DnsHostOverride>> GetDnsHostOverridesAsync(
-        string host, 
-        string username, 
-        string password, 
-        int port = 22);
-
+    Task<List<DnsHostOverride>> GetDnsHostOverridesAsync(string hostname, string username, string password);
+    
     /// <summary>
-    /// Gets pfSense DHCP leases
+    /// Gets DHCP leases from pfSense
     /// </summary>
-    /// <param name="host">pfSense hostname or IP address</param>
+    /// <param name="hostname">pfSense hostname or IP address</param>
     /// <param name="username">SSH username</param>
     /// <param name="password">SSH password</param>
-    /// <param name="port">SSH port (default: 22)</param>
     /// <returns>List of DHCP leases</returns>
-    Task<IEnumerable<Models.DhcpLease>> GetDhcpLeasesAsync(
-        string host, 
-        string username, 
-        string password, 
-        int port = 22);
-
+    Task<List<DhcpLease>> GetDhcpLeasesAsync(string hostname, string username, string password);
+    
     /// <summary>
-    /// Gets pfSense network interface information
+    /// Updates a DNS host override in pfSense
     /// </summary>
-    /// <param name="host">pfSense hostname or IP address</param>
+    /// <param name="hostname">pfSense hostname or IP address</param>
     /// <param name="username">SSH username</param>
     /// <param name="password">SSH password</param>
-    /// <param name="port">SSH port (default: 22)</param>
-    /// <returns>List of network interfaces</returns>
-    Task<IEnumerable<Models.NetworkInterface>> GetNetworkInterfacesAsync(
-        string host, 
-        string username, 
-        string password, 
-        int port = 22);
+    /// <param name="hostOverride">DNS host override to update</param>
+    /// <returns>True if successful, false otherwise</returns>
+    Task<bool> UpdateDnsHostOverrideAsync(string hostname, string username, string password, DnsHostOverride hostOverride);
 }

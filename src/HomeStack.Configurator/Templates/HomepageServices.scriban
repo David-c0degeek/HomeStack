@@ -1,0 +1,14 @@
+{
+  "services": [
+    {{~ for i, container in containers ~}}
+    {
+      "name": "{{ container.name }}",
+      "url": "http://{{ container.name }}.{{ domain }}",
+      "icon": "mdi-server",
+      "category": "{{ container.is_vpn_isolated ? "VPN Services" : "Services" }}",
+      "description": "Docker: {{ container.image }}",
+      "isActive": {{ container.is_running | string.downcase }}
+    }{{~ if i < containers.size - 1 ~}},{{~ end ~}}
+    {{~ end ~}}
+  ]
+}

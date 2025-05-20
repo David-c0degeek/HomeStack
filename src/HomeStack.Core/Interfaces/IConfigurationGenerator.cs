@@ -1,69 +1,35 @@
+using HomeStack.Core.Models;
+
 namespace HomeStack.Core.Interfaces;
 
 /// <summary>
-/// Interface for configuration generator services
+/// Interface for generating configuration files based on scan results
 /// </summary>
 public interface IConfigurationGenerator
 {
     /// <summary>
-    /// Generates pfSense DNS host overrides configuration
+    /// Generates DNS host override configuration for pfSense
     /// </summary>
-    /// <param name="scanResults">Scan results containing service information</param>
-    /// <param name="domainSuffix">Optional domain suffix to append to hostnames (e.g., .local)</param>
-    /// <returns>Configuration text for pfSense DNS host overrides</returns>
-    Task<string> GenerateDnsConfigAsync(
-        Models.ScanResults scanResults, 
-        string? domainSuffix = null);
-
+    /// <param name="containers">Container information</param>
+    /// <param name="domain">Optional domain suffix</param>
+    /// <returns>List of DNS host overrides</returns>
+    List<DnsHostOverride> GenerateDnsHostOverrides(List<ContainerInfo> containers, string? domain = null);
+    
     /// <summary>
-    /// Generates Nginx reverse proxy configuration
+    /// Generates proxy configuration (Nginx, Caddy, etc.)
     /// </summary>
-    /// <param name="scanResults">Scan results containing service information</param>
-    /// <param name="domainSuffix">Optional domain suffix to append to hostnames (e.g., .local)</param>
-    /// <param name="sslEnabled">Whether SSL should be enabled for the proxy</param>
-    /// <param name="authEnabled">Whether authentication should be enabled</param>
-    /// <param name="authConfig">Authentication configuration if auth is enabled</param>
-    /// <returns>Configuration text for Nginx reverse proxy</returns>
-    Task<string> GenerateNginxConfigAsync(
-        Models.ScanResults scanResults, 
-        string? domainSuffix = null, 
-        bool sslEnabled = false, 
-        bool authEnabled = false, 
-        Models.ProxyAuthentication? authConfig = null);
-
+    /// <param name="containers">Container information</param>
+    /// <param name="proxyType">Type of proxy (nginx, caddy)</param>
+    /// <param name="domain">Optional domain suffix</param>
+    /// <returns>Generated configuration file content</returns>
+    Task<string> GenerateProxyConfigurationAsync(List<ContainerInfo> containers, string proxyType, string? domain = null);
+    
     /// <summary>
-    /// Generates Caddy reverse proxy configuration
+    /// Generates dashboard configuration (Flame, Homepage, etc.)
     /// </summary>
-    /// <param name="scanResults">Scan results containing service information</param>
-    /// <param name="domainSuffix">Optional domain suffix to append to hostnames (e.g., .local)</param>
-    /// <param name="sslEnabled">Whether SSL should be enabled for the proxy</param>
-    /// <param name="authEnabled">Whether authentication should be enabled</param>
-    /// <param name="authConfig">Authentication configuration if auth is enabled</param>
-    /// <returns>Configuration text for Caddy reverse proxy</returns>
-    Task<string> GenerateCaddyConfigAsync(
-        Models.ScanResults scanResults, 
-        string? domainSuffix = null, 
-        bool sslEnabled = false, 
-        bool authEnabled = false, 
-        Models.ProxyAuthentication? authConfig = null);
-
-    /// <summary>
-    /// Generates Flame dashboard configuration
-    /// </summary>
-    /// <param name="scanResults">Scan results containing service information</param>
-    /// <param name="domainSuffix">Optional domain suffix to append to hostnames (e.g., .local)</param>
-    /// <returns>Configuration text for Flame dashboard</returns>
-    Task<string> GenerateFlameConfigAsync(
-        Models.ScanResults scanResults, 
-        string? domainSuffix = null);
-
-    /// <summary>
-    /// Generates Homepage dashboard configuration
-    /// </summary>
-    /// <param name="scanResults">Scan results containing service information</param>
-    /// <param name="domainSuffix">Optional domain suffix to append to hostnames (e.g., .local)</param>
-    /// <returns>Configuration text for Homepage dashboard</returns>
-    Task<string> GenerateHomepageConfigAsync(
-        Models.ScanResults scanResults, 
-        string? domainSuffix = null);
+    /// <param name="containers">Container information</param>
+    /// <param name="dashboardType">Type of dashboard (flame, homepage)</param>
+    /// <param name="domain">Optional domain suffix</param>
+    /// <returns>Generated configuration file content</returns>
+    Task<string> GenerateDashboardConfigurationAsync(List<ContainerInfo> containers, string dashboardType, string? domain = null);
 }

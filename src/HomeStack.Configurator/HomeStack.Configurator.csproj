@@ -1,17 +1,23 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Scriban" Version="6.2.1" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\HomeStack.Core\HomeStack.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Scriban" Version="5.9.0" />
+    <None Update="Templates\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

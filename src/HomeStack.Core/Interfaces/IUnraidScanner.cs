@@ -1,49 +1,37 @@
+using HomeStack.Core.Models;
+
 namespace HomeStack.Core.Interfaces;
 
 /// <summary>
-/// Interface for the Unraid scanner service
+/// Interface for scanning Unraid server
 /// </summary>
 public interface IUnraidScanner
 {
     /// <summary>
-    /// Gets Unraid system information
+    /// Checks if Unraid is available via SSH
     /// </summary>
-    /// <param name="host">Unraid hostname or IP address</param>
-    /// <param name="username">SSH username (default: root)</param>
+    /// <param name="hostname">Unraid hostname or IP address</param>
+    /// <param name="username">SSH username</param>
     /// <param name="password">SSH password</param>
     /// <param name="port">SSH port (default: 22)</param>
-    /// <returns>Unraid system information</returns>
-    Task<Models.UnraidInfo> GetSystemInfoAsync(
-        string host, 
-        string username = "root", 
-        string password = "", 
-        int port = 22);
-
+    /// <returns>True if Unraid is available, false otherwise</returns>
+    Task<bool> IsUnraidAvailableAsync(string hostname, string? username = null, string? password = null, int port = 22);
+    
     /// <summary>
-    /// Gets Docker containers running on the Unraid server
+    /// Scans an Unraid server for information
     /// </summary>
-    /// <param name="host">Unraid hostname or IP address</param>
-    /// <param name="username">SSH username (default: root)</param>
+    /// <param name="hostname">Unraid hostname or IP address</param>
+    /// <param name="username">SSH username</param>
     /// <param name="password">SSH password</param>
-    /// <param name="port">SSH port (default: 22)</param>
-    /// <returns>List of container information objects</returns>
-    Task<IEnumerable<Models.ContainerInfo>> GetContainersAsync(
-        string host, 
-        string username = "root", 
-        string password = "", 
-        int port = 22);
-
+    /// <returns>Unraid server information</returns>
+    Task<UnraidInfo> GetSystemInfoAsync(string hostname, string username, string password);
+    
     /// <summary>
-    /// Checks if an Unraid server is available
+    /// Gets Docker containers running on Unraid
     /// </summary>
-    /// <param name="host">Unraid hostname or IP address</param>
-    /// <param name="username">SSH username (default: root)</param>
+    /// <param name="hostname">Unraid hostname or IP address</param>
+    /// <param name="username">SSH username</param>
     /// <param name="password">SSH password</param>
-    /// <param name="port">SSH port (default: 22)</param>
-    /// <returns>True if the Unraid server is available, false otherwise</returns>
-    Task<bool> IsUnraidAvailableAsync(
-        string host, 
-        string username = "root", 
-        string password = "", 
-        int port = 22);
+    /// <returns>List of container information</returns>
+    Task<List<ContainerInfo>> GetContainersAsync(string hostname, string username, string password);
 }

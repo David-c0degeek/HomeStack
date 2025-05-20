@@ -32,7 +32,7 @@ Running a homelab environment can be empowering but also challenging. HomeStack 
 
 ### Prerequisites
 
-- .NET 8.0 SDK
+- .NET 9.0 SDK (Preview 8 or later)
 - Docker (for container scanning)
 - pfSense (optional)
 - Unraid (optional)
@@ -41,7 +41,7 @@ Running a homelab environment can be empowering but also challenging. HomeStack 
 
 ```bash
 # Clone the repository
-git clone https://github.com/David-c0degeek/HomeStack.git
+git clone https://github.com/c0degeek/homestack.git
 
 # Build the project
 cd homestack
@@ -104,7 +104,7 @@ dotnet run --project src/HomeStack.Cli config --input scan-results.json --types 
 
 MIT License
 
-Copyright (c) 2025 David-c0degeek
+Copyright (c) 2025 C0deGeek (David)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

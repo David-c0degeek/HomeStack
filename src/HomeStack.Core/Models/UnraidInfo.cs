@@ -1,77 +1,47 @@
 namespace HomeStack.Core.Models;
 
 /// <summary>
-/// Represents system information for an Unraid server
+/// Represents information about an Unraid server
 /// </summary>
 public class UnraidInfo
 {
     /// <summary>
-    /// Hostname of the Unraid server
+    /// Gets or sets the hostname
     /// </summary>
     public string Hostname { get; set; } = string.Empty;
     
     /// <summary>
-    /// Version of Unraid
+    /// Gets or sets the IP address
+    /// </summary>
+    public string IpAddress { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Gets or sets the Unraid version
     /// </summary>
     public string Version { get; set; } = string.Empty;
     
     /// <summary>
-    /// Kernel version
+    /// Gets or sets the CPU model
     /// </summary>
-    public string? KernelVersion { get; set; }
+    public string CpuModel { get; set; } = string.Empty;
     
     /// <summary>
-    /// Time when the Unraid system was last started
+    /// Gets or sets the total memory
     /// </summary>
-    public DateTime? BootTime { get; set; }
+    public string TotalMemory { get; set; } = string.Empty;
     
     /// <summary>
-    /// Current system uptime
-    /// </summary>
-    public TimeSpan? Uptime { get; set; }
-    
-    /// <summary>
-    /// Current system load averages (1, 5, 15 minutes)
-    /// </summary>
-    public string? LoadAverages { get; set; }
-    
-    /// <summary>
-    /// CPU model
-    /// </summary>
-    public string? CpuModel { get; set; }
-    
-    /// <summary>
-    /// CPU temperature
-    /// </summary>
-    public string? CpuTemperature { get; set; }
-    
-    /// <summary>
-    /// Memory usage information
-    /// </summary>
-    public string? MemoryUsage { get; set; }
-    
-    /// <summary>
-    /// Array status (Started, Stopped, etc.)
-    /// </summary>
-    public string? ArrayStatus { get; set; }
-    
-    /// <summary>
-    /// Whether parity check is in progress
-    /// </summary>
-    public bool ParityCheckInProgress { get; set; }
-    
-    /// <summary>
-    /// Whether Docker is enabled
+    /// Gets or sets a value indicating whether Docker is enabled
     /// </summary>
     public bool DockerEnabled { get; set; }
     
     /// <summary>
-    /// Whether VM (Virtual Machine) support is enabled
+    /// Gets or sets the system information
     /// </summary>
-    public bool VmEnabled { get; set; }
+    public Dictionary<string, string> SystemInfo { get; set; } = new Dictionary<string, string>();
     
     /// <summary>
-    /// Host IP address (used for connection)
+    /// Gets or sets the list of containers
     /// </summary>
-    public string? HostIpAddress { get; set; }
+    public List<ContainerInfo> Containers { get; set; } = new List<ContainerInfo>();
 }

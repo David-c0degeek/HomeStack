@@ -6,47 +6,42 @@ namespace HomeStack.Core.Models;
 public class DhcpLease
 {
     /// <summary>
-    /// Lease IP address
+    /// Gets or sets the IP address
     /// </summary>
     public string IpAddress { get; set; } = string.Empty;
     
     /// <summary>
-    /// MAC address of the device
+    /// Gets or sets the MAC address
     /// </summary>
     public string MacAddress { get; set; } = string.Empty;
     
     /// <summary>
-    /// Hostname of the device
+    /// Gets or sets the hostname
     /// </summary>
-    public string? Hostname { get; set; }
+    public string Hostname { get; set; } = string.Empty;
     
     /// <summary>
-    /// Description for this lease
+    /// Gets or sets the start time of the lease
     /// </summary>
-    public string? Description { get; set; }
+    public DateTime? Start { get; set; }
     
     /// <summary>
-    /// Start time of the lease
+    /// Gets or sets the end time of the lease
     /// </summary>
-    public DateTime? StartTime { get; set; }
+    public DateTime? End { get; set; }
     
     /// <summary>
-    /// End time of the lease
-    /// </summary>
-    public DateTime? EndTime { get; set; }
-    
-    /// <summary>
-    /// The online status of the device
-    /// </summary>
-    public bool IsOnline { get; set; }
-    
-    /// <summary>
-    /// Whether the lease is static (reserved)
+    /// Gets or sets a value indicating whether this is a static mapping
     /// </summary>
     public bool IsStatic { get; set; }
     
     /// <summary>
-    /// The network interface this lease is associated with
+    /// Gets or sets the online status
     /// </summary>
-    public string? Interface { get; set; }
+    public bool IsOnline { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the description
+    /// </summary>
+    public string Description { get; set; } = string.Empty;
 }

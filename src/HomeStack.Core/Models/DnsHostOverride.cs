@@ -1,46 +1,32 @@
 namespace HomeStack.Core.Models;
 
 /// <summary>
-/// Represents a DNS host override entry in pfSense
+/// Represents a DNS host override in pfSense
 /// </summary>
 public class DnsHostOverride
 {
     /// <summary>
-    /// The hostname (without domain suffix)
+    /// Gets or sets the hostname
     /// </summary>
     public string Hostname { get; set; } = string.Empty;
     
     /// <summary>
-    /// The domain suffix
+    /// Gets or sets the domain
     /// </summary>
-    public string? Domain { get; set; }
+    public string Domain { get; set; } = string.Empty;
     
     /// <summary>
-    /// The full FQDN (hostname + domain)
-    /// </summary>
-    public string Fqdn 
-    { 
-        get 
-        {
-            if (string.IsNullOrEmpty(Domain))
-                return Hostname;
-                
-            return $"{Hostname}.{Domain}";
-        } 
-    }
-    
-    /// <summary>
-    /// The IP address
+    /// Gets or sets the IP address
     /// </summary>
     public string IpAddress { get; set; } = string.Empty;
     
     /// <summary>
-    /// Description for this DNS entry
+    /// Gets or sets the description
     /// </summary>
-    public string? Description { get; set; }
+    public string Description { get; set; } = string.Empty;
     
     /// <summary>
-    /// Whether this entry is enabled
+    /// Gets the fully qualified domain name (FQDN)
     /// </summary>
-    public bool IsEnabled { get; set; } = true;
+    public string FullyQualifiedDomainName => string.IsNullOrEmpty(Domain) ? Hostname : $"{Hostname}.{Domain}";
 }

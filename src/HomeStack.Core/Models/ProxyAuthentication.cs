@@ -1,69 +1,48 @@
 namespace HomeStack.Core.Models;
 
 /// <summary>
-/// Represents authentication configuration for a reverse proxy
+/// Represents authentication configuration for a proxy
 /// </summary>
 public class ProxyAuthentication
 {
     /// <summary>
-    /// The type of authentication
+    /// Gets or sets the authentication type
     /// </summary>
-    public AuthenticationType Type { get; set; } = AuthenticationType.Basic;
+    public AuthenticationType Type { get; set; }
     
     /// <summary>
-    /// The realm name for authentication
+    /// Gets or sets the username (for basic auth)
     /// </summary>
-    public string Realm { get; set; } = "Restricted";
+    public string? Username { get; set; }
     
     /// <summary>
-    /// List of username and password combinations
+    /// Gets or sets the password (for basic auth)
     /// </summary>
-    public List<UserCredential> Credentials { get; set; } = new();
-    
-    /// <summary>
-    /// Path to an authentication file (e.g., .htpasswd, .htaccess)
-    /// </summary>
-    public string? AuthFilePath { get; set; }
+    public string? Password { get; set; }
 }
 
 /// <summary>
-/// Types of authentication for reverse proxies
+/// Authentication types for proxy configuration
 /// </summary>
 public enum AuthenticationType
 {
     /// <summary>
-    /// Basic HTTP authentication
+    /// No authentication
     /// </summary>
-    Basic = 0,
+    None = 0,
     
     /// <summary>
-    /// Digest HTTP authentication
+    /// Basic authentication
     /// </summary>
-    Digest = 1,
-    
-    /// <summary>
-    /// JWT token authentication
-    /// </summary>
-    JWT = 2,
+    Basic = 1,
     
     /// <summary>
     /// OAuth authentication
     /// </summary>
-    OAuth = 3
-}
-
-/// <summary>
-/// Represents a username and password combination for authentication
-/// </summary>
-public class UserCredential
-{
-    /// <summary>
-    /// Username
-    /// </summary>
-    public string Username { get; set; } = string.Empty;
+    OAuth = 2,
     
     /// <summary>
-    /// Password (should be stored securely)
+    /// JWT authentication
     /// </summary>
-    public string Password { get; set; } = string.Empty;
+    Jwt = 3
 }

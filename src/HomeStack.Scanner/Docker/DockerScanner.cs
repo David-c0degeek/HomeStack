@@ -11,6 +11,13 @@ namespace HomeStack.Scanner.Docker;
 /// </summary>
 public class DockerScanner : IDockerScanner
 {
+    private readonly ILogger<DockerScanner> _logger;
+
+    public DockerScanner(ILogger<DockerScanner> logger)
+    {
+        _logger = logger;
+    }
+
     /// <summary>
     /// Checks if the Docker daemon is available
     /// </summary>
@@ -39,6 +46,11 @@ public class DockerScanner : IDockerScanner
     /// <param name="certPath">Optional certificate path for TLS authentication</param>
     /// <param name="apiVersion">Optional Docker API version</param>
     /// <returns>List of container information objects</returns>
+    public async Task<List<Core.Models.ContainerInfo>> ScanContainersAsync(string? endpoint = null)
+    {
+        return (await ScanContainersAsync(endpoint, null, null)).ToList();
+    }
+    
     public async Task<IEnumerable<Core.Models.ContainerInfo>> ScanContainersAsync(
         string? host = null, 
         string? certPath = null, 
@@ -64,8 +76,7 @@ public class DockerScanner : IDockerScanner
                     Id = container.ID,
                     Name = GetContainerName(container),
                     Image = container.Image,
-                    Status = container.Status,
-                    Health = GetContainerHealth(container),
+                    IsRunning = container.State == "running",
                     IsVpnIsolated = IsContainerVpnIsolated(container)
                 };
                 
@@ -87,25 +98,24 @@ public class DockerScanner : IDockerScanner
                     }
                     
                     // Get port mappings
-                    info.PortMappings = GetPortMappings(container, inspect);
+                    info.Ports = GetPortMappings(container, inspect);
                     
-                    // Get environment variables
-                    info.EnvironmentVariables = GetEnvironmentVariables(inspect);
+                    // Get environment variables (not used in current ContainerInfo model)
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error inspecting container {info.Name}: {ex.Message}");
+                    _logger.LogError(ex, $"Error inspecting container {info.Name}");
                 }
                 
                 // Get labels
-                info.Labels = container.Labels ?? new Dictionary<string, string>();
+                info.Labels = new Dictionary<string, string>(container.Labels ?? new Dictionary<string, string>());
                 
                 result.Add(info);
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error scanning Docker containers: {ex.Message}");
+            _logger.LogError(ex, "Error scanning Docker containers");
             throw;
         }
         
@@ -119,14 +129,13 @@ public class DockerScanner : IDockerScanner
     {
         var dockerHost = string.IsNullOrEmpty(host) ? GetDefaultDockerHost() : host;
         
-        // Configure Docker client
-        var clientConfig = new DockerClientConfiguration(
-            new Uri(dockerHost),
-            string.IsNullOrEmpty(certPath) ? null : new DockerCertificateCredentials(certPath),
-            TimeSpan.FromSeconds(30)
-        );
+        // Configure Docker client with appropriate options
+        var clientConfig = new DockerClientConfiguration(new Uri(dockerHost));
         
-        return clientConfig.CreateClient(string.IsNullOrEmpty(apiVersion) ? null : apiVersion);
+        // Create client
+        var client = clientConfig.CreateClient();
+        
+        return client;
     }
     
     /// <summary>
@@ -163,30 +172,119 @@ public class DockerScanner : IDockerScanner
     /// <summary>
     /// Gets the container health status
     /// </summary>
+    public async Task<ServiceHealth> CheckContainerHealthAsync(string containerId)
+    {
+        try
+        {
+            using var client = CreateDockerClient(null, null, null);
+            
+            // Get container details
+            var inspect = await client.Containers.InspectContainerAsync(containerId);
+            
+            var health = new ServiceHealth
+            {
+                ServiceName = inspect.Name.TrimStart('/'),
+                LastCheckTime = DateTime.Now
+            };
+            
+            // Check container state
+            if (inspect.State.Running)
+            {
+                if (inspect.State.Health != null)
+                {
+                    health.Status = inspect.State.Health.Status switch
+                    {
+                        "healthy" => Core.Models.ServiceStatus.Healthy,
+                        "unhealthy" => Core.Models.ServiceStatus.Unhealthy,
+                        _ => Core.Models.ServiceStatus.Unknown
+                    };
+                }
+                else
+                {
+                    health.Status = Core.Models.ServiceStatus.Healthy; // Running but no health check
+                }
+            }
+            else if (inspect.State.Status == "exited" || inspect.State.Status == "dead")
+            {
+                health.Status = Core.Models.ServiceStatus.Unhealthy;
+                health.ErrorMessage = $"Container is {inspect.State.Status}";
+            }
+            else
+            {
+                health.Status = Core.Models.ServiceStatus.Unknown;
+                health.ErrorMessage = $"Container state: {inspect.State.Status}";
+            }
+            
+            return health;
+        }
+        catch (Exception ex)
+        {
+            return new ServiceHealth
+            {
+                ServiceName = containerId,
+                Status = Core.Models.ServiceStatus.Unknown,
+                ErrorMessage = ex.Message
+            };
+        }
+    }
+    
     private ServiceHealth GetContainerHealth(ContainerListResponse container)
     {
         if (container.Status?.Contains("(healthy)") == true)
         {
-            return ServiceHealth.Healthy;
+            return new ServiceHealth 
+            { 
+                ServiceName = GetContainerName(container),
+                Status = Core.Models.ServiceStatus.Healthy,
+                LastCheckTime = DateTime.Now
+            };
         }
         else if (container.Status?.Contains("(unhealthy)") == true)
         {
-            return ServiceHealth.Unhealthy;
+            return new ServiceHealth 
+            { 
+                ServiceName = GetContainerName(container),
+                Status = Core.Models.ServiceStatus.Unhealthy,
+                LastCheckTime = DateTime.Now,
+                ErrorMessage = "Container reported as unhealthy"
+            };
         }
         else if (container.Status?.Contains("Up") == true)
         {
-            return ServiceHealth.Healthy; // Assume healthy if up but no health check
+            return new ServiceHealth 
+            { 
+                ServiceName = GetContainerName(container),
+                Status = Core.Models.ServiceStatus.Healthy, // Assume healthy if up but no health check
+                LastCheckTime = DateTime.Now
+            };
         }
         else if (container.Status?.Contains("Exited") == true || container.Status?.Contains("Dead") == true)
         {
-            return ServiceHealth.Stopped;
+            return new ServiceHealth 
+            { 
+                ServiceName = GetContainerName(container),
+                Status = Core.Models.ServiceStatus.Unhealthy,
+                LastCheckTime = DateTime.Now,
+                ErrorMessage = container.Status
+            };
         }
         else if (container.Status?.Contains("Created") == true || container.Status?.Contains("Restarting") == true)
         {
-            return ServiceHealth.Starting;
+            return new ServiceHealth 
+            { 
+                ServiceName = GetContainerName(container),
+                Status = Core.Models.ServiceStatus.Unknown,
+                LastCheckTime = DateTime.Now,
+                ErrorMessage = container.Status
+            };
         }
         
-        return ServiceHealth.Unknown;
+        return new ServiceHealth 
+        { 
+            ServiceName = GetContainerName(container),
+            Status = Core.Models.ServiceStatus.Unknown,
+            LastCheckTime = DateTime.Now
+        };
     }
     
     /// <summary>
@@ -243,25 +341,6 @@ public class DockerScanner : IDockerScanner
                     if (port.PublicPort > 0)
                     {
                         mapping.HostPort = (int)port.PublicPort;
-                        mapping.IsPublic = true;
-                    }
-                    
-                    if (!string.IsNullOrEmpty(port.IP))
-                    {
-                        mapping.HostIp = port.IP;
-                    }
-                    
-                    // Try to find description from labels
-                    if (container.Labels != null)
-                    {
-                        var descriptionLabel = container.Labels.FirstOrDefault(l => 
-                            l.Key.Contains($"port.{mapping.ContainerPort}", StringComparison.OrdinalIgnoreCase) ||
-                            l.Key.Contains($"port.{mapping.ContainerPort}.description", StringComparison.OrdinalIgnoreCase));
-                        
-                        if (!string.IsNullOrEmpty(descriptionLabel.Value))
-                        {
-                            mapping.Description = descriptionLabel.Value;
-                        }
                     }
                     
                     portMappings.Add(mapping);

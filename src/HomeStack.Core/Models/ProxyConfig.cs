@@ -1,89 +1,64 @@
 namespace HomeStack.Core.Models;
 
 /// <summary>
-/// Represents a reverse proxy configuration
+/// Represents a proxy configuration for a service
 /// </summary>
 public class ProxyConfig
 {
     /// <summary>
-    /// The hostname to use for the proxy
+    /// Gets or sets the service name
     /// </summary>
-    public string Hostname { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
     
     /// <summary>
-    /// The domain to use for the proxy
+    /// Gets or sets the domain
     /// </summary>
-    public string? Domain { get; set; }
+    public string Domain { get; set; } = string.Empty;
     
     /// <summary>
-    /// The fully qualified domain name (hostname + domain)
+    /// Gets or sets the target host (internal)
     /// </summary>
-    public string Fqdn 
-    { 
-        get 
-        {
-            if (string.IsNullOrEmpty(Domain))
-                return Hostname;
-                
-            return $"{Hostname}.{Domain}";
-        } 
-    }
+    public string TargetHost { get; set; } = string.Empty;
     
     /// <summary>
-    /// The target IP address
-    /// </summary>
-    public string TargetIp { get; set; } = string.Empty;
-    
-    /// <summary>
-    /// The target port
+    /// Gets or sets the target port
     /// </summary>
     public int TargetPort { get; set; }
     
     /// <summary>
-    /// The target URL (http://ip:port)
+    /// Gets or sets a value indicating whether SSL is enabled
     /// </summary>
-    public string TargetUrl 
-    { 
-        get => $"http://{TargetIp}:{TargetPort}"; 
-    }
+    public bool Ssl { get; set; }
     
     /// <summary>
-    /// Whether SSL is enabled for this proxy
+    /// Gets or sets custom headers
     /// </summary>
-    public bool SslEnabled { get; set; }
+    public Dictionary<string, string> CustomHeaders { get; set; } = new Dictionary<string, string>();
     
     /// <summary>
-    /// The SSL certificate path (if SSL is enabled)
+    /// Gets or sets authentication settings
     /// </summary>
-    public string? SslCertPath { get; set; }
+    public ProxyAuthentication? ProxyAuthentication { get; set; }
+    
+    // Backwards compatibility properties
     
     /// <summary>
-    /// The SSL key path (if SSL is enabled)
+    /// Gets the service name (for backwards compatibility)
     /// </summary>
-    public string? SslKeyPath { get; set; }
+    public string ServiceName => Name;
     
     /// <summary>
-    /// Whether authentication is enabled for this proxy
+    /// Gets the public URL (for backwards compatibility)
     /// </summary>
-    public bool AuthEnabled { get; set; }
+    public string PublicUrl => Domain;
     
     /// <summary>
-    /// Authentication configuration (if auth is enabled)
+    /// Gets the target URL (for backwards compatibility)
     /// </summary>
-    public ProxyAuthentication? AuthConfig { get; set; }
+    public string TargetUrl => $"{(Ssl ? "https" : "http")}://{TargetHost}:{TargetPort}";
     
     /// <summary>
-    /// Additional headers to set
+    /// Gets or sets a value indicating whether the proxy config is enabled
     /// </summary>
-    public Dictionary<string, string> AdditionalHeaders { get; set; } = new();
-    
-    /// <summary>
-    /// Path to a custom configuration file
-    /// </summary>
-    public string? CustomConfigPath { get; set; }
-    
-    /// <summary>
-    /// Whether this proxy config is enabled
-    /// </summary>
-    public bool IsEnabled { get; set; } = true;
+    public bool Enabled { get; set; }
 }

@@ -1,0 +1,12 @@
+{
+  "bookmarks": [
+    {{~ for i, container in containers ~}}
+    {
+      "name": "{{ container.name }}",
+      "url": "http://{{ container.name }}.{{ domain }}",
+      "icon": "fas fa-server",
+      "tags": ["homestack", "container", "docker"{{ if container.is_vpn_isolated }}, "vpn"{{ end }}]
+    }{{~ if i < containers.size - 1 ~}},{{~ end ~}}
+    {{~ end ~}}
+  ]
+}

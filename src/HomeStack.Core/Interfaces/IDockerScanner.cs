@@ -1,31 +1,23 @@
+using HomeStack.Core.Models;
+
 namespace HomeStack.Core.Interfaces;
 
 /// <summary>
-/// Interface for the Docker scanner service
+/// Interface for scanning Docker containers
 /// </summary>
 public interface IDockerScanner
 {
     /// <summary>
-    /// Scans Docker containers and returns information about them
+    /// Scans for Docker containers
     /// </summary>
-    /// <param name="host">Optional Docker host (default: local Docker socket)</param>
-    /// <param name="certPath">Optional certificate path for TLS authentication</param>
-    /// <param name="apiVersion">Optional Docker API version</param>
-    /// <returns>List of container information objects</returns>
-    Task<IEnumerable<Models.ContainerInfo>> ScanContainersAsync(
-        string? host = null, 
-        string? certPath = null, 
-        string? apiVersion = null);
-        
+    /// <param name="endpoint">Optional Docker endpoint</param>
+    /// <returns>List of container information</returns>
+    Task<List<ContainerInfo>> ScanContainersAsync(string? endpoint = null);
+    
     /// <summary>
-    /// Checks if the Docker daemon is available
+    /// Checks the health of a container
     /// </summary>
-    /// <param name="host">Optional Docker host (default: local Docker socket)</param>
-    /// <param name="certPath">Optional certificate path for TLS authentication</param>
-    /// <param name="apiVersion">Optional Docker API version</param>
-    /// <returns>True if the Docker daemon is available, false otherwise</returns>
-    Task<bool> IsDockerAvailableAsync(
-        string? host = null, 
-        string? certPath = null, 
-        string? apiVersion = null);
+    /// <param name="containerId">Container ID</param>
+    /// <returns>Service health status</returns>
+    Task<ServiceHealth> CheckContainerHealthAsync(string containerId);
 }

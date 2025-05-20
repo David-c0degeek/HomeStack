@@ -6,52 +6,42 @@ namespace HomeStack.Core.Models;
 public class ContainerInfo
 {
     /// <summary>
-    /// Container ID
+    /// Gets or sets the container ID
     /// </summary>
     public string Id { get; set; } = string.Empty;
     
     /// <summary>
-    /// Container name
+    /// Gets or sets the container name
     /// </summary>
     public string Name { get; set; } = string.Empty;
     
     /// <summary>
-    /// Container image name
+    /// Gets or sets the container image
     /// </summary>
     public string Image { get; set; } = string.Empty;
     
     /// <summary>
-    /// Container IP address
+    /// Gets or sets the container IP address
     /// </summary>
     public string IpAddress { get; set; } = string.Empty;
     
     /// <summary>
-    /// Container status
+    /// Gets or sets a value indicating whether the container is running
     /// </summary>
-    public string Status { get; set; } = string.Empty;
+    public bool IsRunning { get; set; }
     
     /// <summary>
-    /// Port mappings for the container
-    /// </summary>
-    public List<PortMapping> PortMappings { get; set; } = new();
-    
-    /// <summary>
-    /// Whether the container is running behind a VPN
+    /// Gets or sets a value indicating whether the container is VPN isolated
     /// </summary>
     public bool IsVpnIsolated { get; set; }
     
     /// <summary>
-    /// Container health status
+    /// Gets or sets the container labels
     /// </summary>
-    public ServiceHealth Health { get; set; } = ServiceHealth.Unknown;
+    public Dictionary<string, string> Labels { get; set; } = new Dictionary<string, string>();
     
     /// <summary>
-    /// Container labels
+    /// Gets or sets the port mappings
     /// </summary>
-    public Dictionary<string, string> Labels { get; set; } = new();
-    
-    /// <summary>
-    /// Container environment variables
-    /// </summary>
-    public Dictionary<string, string> EnvironmentVariables { get; set; } = new();
+    public List<PortMapping> Ports { get; set; } = new List<PortMapping>();
 }

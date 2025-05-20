@@ -3,30 +3,51 @@ namespace HomeStack.Core.Models;
 /// <summary>
 /// Represents the health status of a service
 /// </summary>
-public enum ServiceHealth
+public class ServiceHealth
 {
     /// <summary>
-    /// The service health status is unknown
+    /// Gets or sets the service name
+    /// </summary>
+    public string ServiceName { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Gets or sets the service status
+    /// </summary>
+    public ServiceStatus Status { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the error message if the service is not healthy
+    /// </summary>
+    public string? ErrorMessage { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the last check time
+    /// </summary>
+    public DateTime LastCheckTime { get; set; } = DateTime.Now;
+}
+
+/// <summary>
+/// Represents the status of a service
+/// </summary>
+public enum ServiceStatus
+{
+    /// <summary>
+    /// Unknown status
     /// </summary>
     Unknown = 0,
     
     /// <summary>
-    /// The service is healthy
+    /// Healthy status
     /// </summary>
     Healthy = 1,
     
     /// <summary>
-    /// The service is unhealthy
+    /// Unhealthy status
     /// </summary>
     Unhealthy = 2,
     
     /// <summary>
-    /// The service is starting
+    /// Degraded status
     /// </summary>
-    Starting = 3,
-    
-    /// <summary>
-    /// The service is stopped
-    /// </summary>
-    Stopped = 4
+    Degraded = 3
 }

@@ -1,62 +1,37 @@
 namespace HomeStack.Core.Models;
 
 /// <summary>
-/// Represents system information for a pfSense router
+/// Represents information about a pfSense router
 /// </summary>
 public class PfSenseInfo
 {
     /// <summary>
-    /// Hostname of the pfSense router
+    /// Gets or sets the hostname
     /// </summary>
     public string Hostname { get; set; } = string.Empty;
     
     /// <summary>
-    /// Version of pfSense
+    /// Gets or sets the IP address
+    /// </summary>
+    public string IpAddress { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Gets or sets the pfSense version
     /// </summary>
     public string Version { get; set; } = string.Empty;
     
     /// <summary>
-    /// Platform architecture (e.g., amd64)
+    /// Gets or sets the list of DNS host overrides
     /// </summary>
-    public string? Platform { get; set; }
+    public List<DnsHostOverride> DnsHostOverrides { get; set; } = new List<DnsHostOverride>();
     
     /// <summary>
-    /// Domain name configured in pfSense
+    /// Gets or sets the list of DHCP leases
     /// </summary>
-    public string? Domain { get; set; }
+    public List<DhcpLease> DhcpLeases { get; set; } = new List<DhcpLease>();
     
     /// <summary>
-    /// DNS servers configured in pfSense
+    /// Gets or sets the list of network interfaces
     /// </summary>
-    public List<string> DnsServers { get; set; } = new();
-    
-    /// <summary>
-    /// Time when the pfSense system was last started
-    /// </summary>
-    public DateTime? BootTime { get; set; }
-    
-    /// <summary>
-    /// Current system uptime
-    /// </summary>
-    public TimeSpan? Uptime { get; set; }
-    
-    /// <summary>
-    /// Current system load averages (1, 5, 15 minutes)
-    /// </summary>
-    public string? LoadAverages { get; set; }
-    
-    /// <summary>
-    /// CPU temperature (if available)
-    /// </summary>
-    public string? CpuTemperature { get; set; }
-    
-    /// <summary>
-    /// Memory usage information
-    /// </summary>
-    public string? MemoryUsage { get; set; }
-    
-    /// <summary>
-    /// Host IP address (used for connection)
-    /// </summary>
-    public string? HostIpAddress { get; set; }
+    public List<NetworkInterface> Interfaces { get; set; } = new List<NetworkInterface>();
 }
