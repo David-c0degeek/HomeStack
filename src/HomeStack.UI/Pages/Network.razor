@@ -1,0 +1,663 @@
+@page "/network"
+@inject HttpClient Http
+
+<PageTitle>HomeStack - Network</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>Network</h1>
+            <p class="lead">View and manage your network infrastructure</p>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" @onclick="Refresh">
+                <span class="bi bi-arrow-clockwise"></span> Refresh
+            </button>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">pfSense Router</h5>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="d-flex justify-content-center my-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (pfSenseInfo != null)
+                    {
+                        <dl class="row">
+                            <dt class="col-sm-4">Hostname</dt>
+                            <dd class="col-sm-8">@pfSenseInfo.Hostname</dd>
+                            
+                            <dt class="col-sm-4">IP Address</dt>
+                            <dd class="col-sm-8">@pfSenseInfo.IpAddress</dd>
+                            
+                            <dt class="col-sm-4">Version</dt>
+                            <dd class="col-sm-8">@pfSenseInfo.Version</dd>
+                            
+                            <dt class="col-sm-4">Interfaces</dt>
+                            <dd class="col-sm-8">@(pfSenseInfo.Interfaces?.Count ?? 0)</dd>
+                            
+                            <dt class="col-sm-4">DNS Entries</dt>
+                            <dd class="col-sm-8">@(pfSenseInfo.DnsHostOverrides?.Count ?? 0)</dd>
+                            
+                            <dt class="col-sm-4">DHCP Leases</dt>
+                            <dd class="col-sm-8">@(pfSenseInfo.DhcpLeases?.Count ?? 0)</dd>
+                        </dl>
+                        
+                        <div class="d-grid gap-2 mt-3">
+                            <a href="@($"http://{pfSenseInfo.IpAddress}")" target="_blank" class="btn btn-outline-primary">
+                                <span class="bi bi-box-arrow-up-right"></span> Open pfSense UI
+                            </a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center my-4">
+                            <p>No pfSense router detected.</p>
+                            <button class="btn btn-sm btn-primary" @onclick="ScanNetwork">Scan Network</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Unraid Server</h5>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="d-flex justify-content-center my-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (unraidInfo != null)
+                    {
+                        <dl class="row">
+                            <dt class="col-sm-4">Hostname</dt>
+                            <dd class="col-sm-8">@unraidInfo.Hostname</dd>
+                            
+                            <dt class="col-sm-4">IP Address</dt>
+                            <dd class="col-sm-8">@unraidInfo.IpAddress</dd>
+                            
+                            <dt class="col-sm-4">Version</dt>
+                            <dd class="col-sm-8">@unraidInfo.Version</dd>
+                            
+                            <dt class="col-sm-4">CPU Model</dt>
+                            <dd class="col-sm-8">@unraidInfo.CpuModel</dd>
+                            
+                            <dt class="col-sm-4">Memory</dt>
+                            <dd class="col-sm-8">@unraidInfo.TotalMemory</dd>
+                            
+                            <dt class="col-sm-4">Docker</dt>
+                            <dd class="col-sm-8">
+                                @if (unraidInfo.DockerEnabled)
+                                {
+                                    <span class="badge bg-success">Enabled</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">Disabled</span>
+                                }
+                            </dd>
+                        </dl>
+                        
+                        <div class="d-grid gap-2 mt-3">
+                            <a href="@($"http://{unraidInfo.IpAddress}")" target="_blank" class="btn btn-outline-primary">
+                                <span class="bi bi-box-arrow-up-right"></span> Open Unraid UI
+                            </a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center my-4">
+                            <p>No Unraid server detected.</p>
+                            <button class="btn btn-sm btn-primary" @onclick="ScanNetwork">Scan Network</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Network Statistics</h5>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="d-flex justify-content-center my-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <dl class="row">
+                            <dt class="col-sm-7">Total Containers</dt>
+                            <dd class="col-sm-5 text-end">@(containers?.Count ?? 0)</dd>
+                            
+                            <dt class="col-sm-7">Running Containers</dt>
+                            <dd class="col-sm-5 text-end">@(containers?.Count(c => c.IsRunning) ?? 0)</dd>
+                            
+                            <dt class="col-sm-7">Stopped Containers</dt>
+                            <dd class="col-sm-5 text-end">@(containers?.Count(c => !c.IsRunning) ?? 0)</dd>
+                            
+                            <dt class="col-sm-7">VPN Isolated</dt>
+                            <dd class="col-sm-5 text-end">@(containers?.Count(c => c.IsVpnIsolated) ?? 0)</dd>
+                            
+                            <dt class="col-sm-7">DNS Entries</dt>
+                            <dd class="col-sm-5 text-end">@(pfSenseInfo?.DnsHostOverrides?.Count ?? 0)</dd>
+                            
+                            <dt class="col-sm-7">DHCP Leases</dt>
+                            <dd class="col-sm-5 text-end">@(pfSenseInfo?.DhcpLeases?.Count ?? 0)</dd>
+                        </dl>
+                        
+                        <div class="d-grid gap-2 mt-3">
+                            <button class="btn btn-outline-primary" @onclick="ScanNetwork">
+                                <span class="bi bi-search"></span> Scan Network
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">DNS Host Overrides</h5>
+                        <span class="badge bg-light text-dark">@(dnsOverrides?.Count ?? 0) entries</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="d-flex justify-content-center my-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (dnsOverrides != null && dnsOverrides.Count > 0)
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Hostname</th>
+                                        <th>Domain</th>
+                                        <th>IP Address</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var dns in dnsOverrides)
+                                    {
+                                        <tr>
+                                            <td>@dns.Hostname</td>
+                                            <td>@dns.Domain</td>
+                                            <td>@dns.IpAddress</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => EditDnsOverride(dns)">
+                                                    <span class="bi bi-pencil"></span>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteDnsOverride(dns)">
+                                                    <span class="bi bi-trash"></span>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="d-flex justify-content-end mt-3">
+                            <button class="btn btn-sm btn-primary" @onclick="AddDnsOverride">
+                                <span class="bi bi-plus-circle"></span> Add DNS Override
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center my-4">
+                            <p>No DNS host overrides found.</p>
+                            <button class="btn btn-sm btn-primary" @onclick="AddDnsOverride">
+                                <span class="bi bi-plus-circle"></span> Add DNS Override
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 mb-3">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">DHCP Leases</h5>
+                        <span class="badge bg-light text-dark">@(dhcpLeases?.Count ?? 0) leases</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="d-flex justify-content-center my-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (dhcpLeases != null && dhcpLeases.Count > 0)
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Hostname</th>
+                                        <th>IP Address</th>
+                                        <th>MAC Address</th>
+                                        <th>Status</th>
+                                        <th>Type</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var lease in dhcpLeases)
+                                    {
+                                        <tr>
+                                            <td>@lease.Hostname</td>
+                                            <td>@lease.IpAddress</td>
+                                            <td>@lease.MacAddress</td>
+                                            <td>
+                                                @if (lease.IsOnline)
+                                                {
+                                                    <span class="badge bg-success">Online</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary">Offline</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (lease.IsStatic)
+                                                {
+                                                    <span class="badge bg-primary">Static</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-info">Dynamic</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center my-4">
+                            <p>No DHCP leases found.</p>
+                            <button class="btn btn-sm btn-primary" @onclick="ScanNetwork">Scan Network</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Network Interfaces</h5>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="d-flex justify-content-center my-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (networkInterfaces != null && networkInterfaces.Count > 0)
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Description</th>
+                                        <th>IP Address</th>
+                                        <th>Subnet Mask</th>
+                                        <th>MAC Address</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var iface in networkInterfaces)
+                                    {
+                                        <tr>
+                                            <td>@iface.Name</td>
+                                            <td>@iface.Description</td>
+                                            <td>@iface.IpAddress</td>
+                                            <td>@iface.SubnetMask</td>
+                                            <td>@iface.MacAddress</td>
+                                            <td>
+                                                @if (iface.IsUp && iface.IsEnabled)
+                                                {
+                                                    <span class="badge bg-success">Active</span>
+                                                }
+                                                else if (iface.IsEnabled)
+                                                {
+                                                    <span class="badge bg-warning">Down</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-danger">Disabled</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center my-4">
+                            <p>No network interfaces found.</p>
+                            <button class="btn btn-sm btn-primary" @onclick="ScanNetwork">Scan Network</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (editingDnsOverride != null)
+{
+    <div class="modal fade show" style="display: block;" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(isNewDnsOverride ? "Add DNS Override" : "Edit DNS Override")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="hostname" class="form-label">Hostname</label>
+                        <input type="text" class="form-control" id="hostname" @bind="editingDnsOverride.Hostname">
+                    </div>
+                    <div class="mb-3">
+                        <label for="domain" class="form-label">Domain</label>
+                        <input type="text" class="form-control" id="domain" @bind="editingDnsOverride.Domain">
+                    </div>
+                    <div class="mb-3">
+                        <label for="ipAddress" class="form-label">IP Address</label>
+                        <input type="text" class="form-control" id="ipAddress" @bind="editingDnsOverride.IpAddress">
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <input type="text" class="form-control" id="description" @bind="editingDnsOverride.Description">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveDnsOverride">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    private bool isLoading = true;
+    private ScanResults? scanResults;
+    private PfSenseInfo? pfSenseInfo;
+    private UnraidInfo? unraidInfo;
+    private List<ContainerInfo>? containers;
+    private List<DnsHostOverride>? dnsOverrides;
+    private List<DhcpLease>? dhcpLeases;
+    private List<NetworkInterface>? networkInterfaces;
+    
+    private DnsHostOverride? editingDnsOverride;
+    private bool isNewDnsOverride;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            isLoading = true;
+            // In a real implementation, this would call the API to get the data
+            // For now, we'll use sample data
+            await Task.Delay(1000); // Simulate API call
+            
+            // Create sample data for testing
+            containers = new List<ContainerInfo>();
+            
+            // Add some sample containers
+            for (int i = 1; i <= 12; i++)
+            {
+                var container = new ContainerInfo
+                {
+                    Id = $"container{i}",
+                    Name = $"service-{i}",
+                    Image = $"image/service-{i}:{(i % 3 == 0 ? "latest" : $"1.0.{i}")}",
+                    IpAddress = $"192.168.1.{i + 10}",
+                    IsRunning = i % 3 != 0, // Make some containers stopped
+                    IsVpnIsolated = i % 5 == 0,
+                    Ports = new List<PortMapping>(),
+                    Labels = new Dictionary<string, string>()
+                };
+                
+                // Add some ports
+                for (int p = 0; p < (i % 5) + 1; p++)
+                {
+                    container.Ports.Add(new PortMapping
+                    {
+                        ContainerPort = 8000 + p * 100,
+                        HostPort = 8000 + p * 100,
+                        Protocol = "tcp"
+                    });
+                }
+                
+                containers.Add(container);
+            }
+            
+            // Create sample pfSense data
+            pfSenseInfo = new PfSenseInfo
+            {
+                Hostname = "pfsense.local",
+                IpAddress = "192.168.1.1",
+                Version = "2.7.0",
+                DnsHostOverrides = new List<DnsHostOverride>(),
+                DhcpLeases = new List<DhcpLease>(),
+                Interfaces = new List<NetworkInterface>()
+            };
+            
+            // Create sample Unraid data
+            unraidInfo = new UnraidInfo
+            {
+                Hostname = "tower",
+                IpAddress = "192.168.1.2",
+                Version = "6.12.3",
+                CpuModel = "AMD Ryzen 9 5900X",
+                TotalMemory = "64 GB",
+                DockerEnabled = true,
+                Containers = new List<ContainerInfo>()
+            };
+            
+            // Create sample DNS overrides
+            dnsOverrides = new List<DnsHostOverride>();
+            for (int i = 0; i < 8; i++)
+            {
+                var dns = new DnsHostOverride
+                {
+                    Hostname = $"service-{i + 1}",
+                    Domain = "local",
+                    IpAddress = $"192.168.1.{i + 11}",
+                    Description = $"Service {i + 1} DNS entry"
+                };
+                
+                dnsOverrides.Add(dns);
+                pfSenseInfo.DnsHostOverrides.Add(dns);
+            }
+            
+            // Create sample DHCP leases
+            dhcpLeases = new List<DhcpLease>();
+            for (int i = 0; i < 15; i++)
+            {
+                var lease = new DhcpLease
+                {
+                    Hostname = i < 5 ? $"device-{i + 1}" : $"client-{i - 4}",
+                    IpAddress = $"192.168.1.{i + 50}",
+                    MacAddress = $"00:1A:2B:3C:4D:{i + 10:X2}",
+                    IsOnline = i % 3 != 0,
+                    IsStatic = i < 5,
+                    Start = DateTime.Now.AddDays(-1),
+                    End = DateTime.Now.AddDays(6)
+                };
+                
+                dhcpLeases.Add(lease);
+                pfSenseInfo.DhcpLeases.Add(lease);
+            }
+            
+            // Create sample network interfaces
+            networkInterfaces = new List<NetworkInterface>();
+            string[] interfaceNames = { "WAN", "LAN", "OPT1", "OPT2", "OPT3" };
+            string[] descriptions = { "Internet", "Local Network", "Guest Network", "IoT Network", "Management" };
+            
+            for (int i = 0; i < interfaceNames.Length; i++)
+            {
+                var netInterface = new NetworkInterface
+                {
+                    Name = interfaceNames[i],
+                    Description = descriptions[i],
+                    IpAddress = i == 0 ? "203.0.113.1" : $"192.168.{i}.1",
+                    SubnetMask = i == 0 ? "255.255.255.0" : "255.255.255.0",
+                    MacAddress = $"00:1B:2C:3D:4E:{i + 10:X2}",
+                    IsUp = i < 3, // First 3 interfaces are up
+                    IsEnabled = i < 4 // First 4 interfaces are enabled
+                };
+                
+                networkInterfaces.Add(netInterface);
+                pfSenseInfo.Interfaces.Add(netInterface);
+            }
+            
+            scanResults = new ScanResults
+            {
+                ScanTimestamp = DateTime.Now,
+                Containers = containers,
+                UnraidInfo = unraidInfo,
+                PfSenseInfo = pfSenseInfo
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task Refresh()
+    {
+        await LoadData();
+    }
+    
+    private async Task ScanNetwork()
+    {
+        isLoading = true;
+        // In a real implementation, this would call the API to start a scan
+        await Task.Delay(2000); // Simulate scanning
+        await LoadData();
+    }
+    
+    private void AddDnsOverride()
+    {
+        editingDnsOverride = new DnsHostOverride
+        {
+            Domain = "local" // Default domain
+        };
+        isNewDnsOverride = true;
+    }
+    
+    private void EditDnsOverride(DnsHostOverride dnsOverride)
+    {
+        editingDnsOverride = new DnsHostOverride
+        {
+            Hostname = dnsOverride.Hostname,
+            Domain = dnsOverride.Domain,
+            IpAddress = dnsOverride.IpAddress,
+            Description = dnsOverride.Description
+        };
+        isNewDnsOverride = false;
+    }
+    
+    private void DeleteDnsOverride(DnsHostOverride dnsOverride)
+    {
+        dnsOverrides?.Remove(dnsOverride);
+        pfSenseInfo?.DnsHostOverrides?.Remove(dnsOverride);
+    }
+    
+    private void SaveDnsOverride()
+    {
+        if (editingDnsOverride == null)
+            return;
+            
+        if (isNewDnsOverride)
+        {
+            dnsOverrides?.Add(editingDnsOverride);
+            pfSenseInfo?.DnsHostOverrides?.Add(editingDnsOverride);
+        }
+        else
+        {
+            // Find and update existing DNS override
+            var existing = dnsOverrides?.FirstOrDefault(d => 
+                d.Hostname == editingDnsOverride.Hostname && 
+                d.Domain == editingDnsOverride.Domain);
+                
+            if (existing != null)
+            {
+                existing.IpAddress = editingDnsOverride.IpAddress;
+                existing.Description = editingDnsOverride.Description;
+            }
+        }
+        
+        CloseModal();
+    }
+    
+    private void CloseModal()
+    {
+        editingDnsOverride = null;
+    }
+}

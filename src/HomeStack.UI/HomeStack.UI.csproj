@@ -11,4 +11,10 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.5" PrivateAssets="all" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\HomeStack.Core\HomeStack.Core.csproj" />
+    <ProjectReference Include="..\HomeStack.Scanner\HomeStack.Scanner.csproj" />
+    <ProjectReference Include="..\HomeStack.Configurator\HomeStack.Configurator.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -1,0 +1,481 @@
+@page "/configurations"
+@inject HttpClient Http
+
+<PageTitle>HomeStack - Configurations</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>Configurations</h1>
+            <p class="lead">Generate and manage configuration files for your homelab</p>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" @onclick="() => GenerateConfigurations()">
+                <span class="bi bi-gear"></span> Generate Configs
+            </button>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Configuration Types</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        @foreach (var configType in configTypes)
+                        {
+                            <button class="list-group-item list-group-item-action @(selectedConfigType == configType.Key ? "active" : "")"
+                                    @onclick="() => SelectConfigType(configType.Key)">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>@configType.Value</span>
+                                    <input type="checkbox" checked="@configSelections[configType.Key]" 
+                                           @onclick:stopPropagation="true"
+                                           @onchange="@(e => ToggleConfigSelection(e, configType.Key))">
+                                </div>
+                            </button>
+                        }
+                    </div>
+                    
+                    <div class="d-grid gap-2 mt-3">
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => SelectAllConfigs()">Select All</button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => UnselectAllConfigs()">Unselect All</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Options</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="domain" class="form-label">Domain Suffix</label>
+                        <input type="text" class="form-control" id="domain" placeholder="e.g. homelab.local" 
+                               @bind="domainSuffix">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="output-path" class="form-label">Output Path</label>
+                        <input type="text" class="form-control" id="output-path" placeholder="e.g. /configs" 
+                               @bind="outputPath">
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="auto-apply" 
+                               @bind="autoApply">
+                        <label class="form-check-label" for="auto-apply">
+                            Auto-apply configurations
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">@configTypes[selectedConfigType] Configuration</h5>
+                        <div>
+                            <button class="btn btn-sm btn-light me-2" @onclick="() => CopyToClipboard()">
+                                <span class="bi bi-clipboard"></span> Copy
+                            </button>
+                            <button class="btn btn-sm btn-light" @onclick="() => DownloadConfig()">
+                                <span class="bi bi-download"></span> Download
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (isGenerating)
+                    {
+                        <div class="d-flex justify-content-center my-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (!string.IsNullOrEmpty(currentConfig))
+                    {
+                        <pre class="bg-light p-3 rounded"><code>@currentConfig</code></pre>
+                    }
+                    else
+                    {
+                        <div class="text-center my-4">
+                            <p>No configuration generated yet.</p>
+                            <button class="btn btn-sm btn-primary" @onclick="() => GenerateConfigurations()">Generate Configurations</button>
+                        </div>
+                    }
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Generated Configurations</h5>
+                </div>
+                <div class="card-body">
+                    @if (isGenerating)
+                    {
+                        <div class="d-flex justify-content-center my-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (configurations.Count > 0)
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Generated At</th>
+                                        <th>File Name</th>
+                                        <th>Size</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var config in configurations)
+                                    {
+                                        <tr>
+                                            <td>@configTypes[config.Key]</td>
+                                            <td>@config.Timestamp.ToString("g")</td>
+                                            <td>@config.FileName</td>
+                                            <td>@FormatFileSize(config.Content.Length)</td>
+                                            <td>
+                                                <div class="btn-group">
+                                                    <button class="btn btn-sm btn-outline-primary" 
+                                                            @onclick="() => ViewConfig(config.Key)">
+                                                        <span class="bi bi-eye"></span>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-secondary" 
+                                                            @onclick="() => CopyToClipboard(config.Key)">
+                                                        <span class="bi bi-clipboard"></span>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-dark" 
+                                                            @onclick="() => DownloadConfig(config.Key)">
+                                                        <span class="bi bi-download"></span>
+                                                    </button>
+                                                    @if (config.CanApply)
+                                                    {
+                                                        <button class="btn btn-sm btn-outline-success" 
+                                                                @onclick="() => ApplyConfig(config.Key)">
+                                                            <span class="bi bi-check-circle"></span>
+                                                        </button>
+                                                    }
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center my-4">
+                            <p>No configurations have been generated yet.</p>
+                            <button class="btn btn-sm btn-primary" @onclick="() => GenerateConfigurations()">Generate Configurations</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool isGenerating = false;
+    
+    private Dictionary<string, string> configTypes = new Dictionary<string, string>
+    {
+        { "dns", "pfSense DNS" },
+        { "nginx", "Nginx Proxy" },
+        { "caddy", "Caddy Proxy" },
+        { "flame", "Flame Dashboard" },
+        { "homepage", "Homepage Dashboard" }
+    };
+    
+    private Dictionary<string, bool> configSelections = new Dictionary<string, bool>();
+    private string selectedConfigType = "dns";
+    private string domainSuffix = "local";
+    private string outputPath = "/configs";
+    private bool autoApply = false;
+    
+    private List<ConfigOutput> configurations = new List<ConfigOutput>();
+    private string currentConfig = "";
+    
+    protected override void OnInitialized()
+    {
+        // Initialize config selections
+        foreach (var type in configTypes.Keys)
+        {
+            configSelections[type] = true; // All selected by default
+        }
+    }
+
+    private async Task GenerateConfigurations()
+    {
+        try
+        {
+            isGenerating = true;
+            var selectedTypes = configSelections.Where(c => c.Value).Select(c => c.Key).ToList();
+            
+            if (selectedTypes.Count == 0)
+            {
+                // No configs selected
+                return;
+            }
+            
+            // In a real implementation, this would call the API to generate configurations
+            await Task.Delay(1500); // Simulate API call
+            
+            // Create sample configurations
+            configurations.Clear();
+            
+            DateTime now = DateTime.Now;
+            
+            foreach (var type in selectedTypes)
+            {
+                string content = "";
+                string fileName = "";
+                bool canApply = true;
+                
+                switch (type)
+                {
+                    case "dns":
+                        fileName = "dns_host_overrides.conf";
+                        content = "# Generated by HomeStack on " + now.ToString("d MMMM yyyy") + "\n" +
+                                  "# pfSense DNS Host Overrides\n\n" +
+                                  "# Add the following entries to pfSense DNS Resolver > Host Overrides\n" +
+                                  "# or use the HomeStack CLI to automatically update pfSense\n\n" +
+                                  "service-1." + domainSuffix + " 192.168.1.11\n" +
+                                  "service-2." + domainSuffix + " 192.168.1.12\n" +
+                                  "service-3." + domainSuffix + " 192.168.1.13\n" +
+                                  "service-4." + domainSuffix + " 192.168.1.14\n" +
+                                  "service-5." + domainSuffix + " 192.168.1.15\n";
+                        break;
+                        
+                    case "nginx":
+                        fileName = "nginx_proxy.conf";
+                        content = "# Generated by HomeStack on " + now.ToString("d MMMM yyyy") + "\n\n" +
+                                  "server {\n" +
+                                  "    listen 80;\n" +
+                                  "    listen [::]:80;\n" +
+                                  "    server_name service-1." + domainSuffix + ";\n\n" +
+                                  "    location / {\n" +
+                                  "        proxy_pass http://192.168.1.11:8000;\n" +
+                                  "        proxy_set_header Host $host;\n" +
+                                  "        proxy_set_header X-Real-IP $remote_addr;\n" +
+                                  "    }\n" +
+                                  "}\n\n" +
+                                  "server {\n" +
+                                  "    listen 80;\n" +
+                                  "    listen [::]:80;\n" +
+                                  "    server_name service-2." + domainSuffix + ";\n\n" +
+                                  "    location / {\n" +
+                                  "        proxy_pass http://192.168.1.12:8000;\n" +
+                                  "        proxy_set_header Host $host;\n" +
+                                  "        proxy_set_header X-Real-IP $remote_addr;\n" +
+                                  "    }\n" +
+                                  "}\n";
+                        break;
+                        
+                    case "caddy":
+                        fileName = "Caddyfile";
+                        content = "# Generated by HomeStack on " + now.ToString("d MMMM yyyy") + "\n\n" +
+                                  "service-1." + domainSuffix + " {\n" +
+                                  "    reverse_proxy 192.168.1.11:8000\n" +
+                                  "}\n\n" +
+                                  "service-2." + domainSuffix + " {\n" +
+                                  "    reverse_proxy 192.168.1.12:8000\n" +
+                                  "}\n\n" +
+                                  "service-3." + domainSuffix + " {\n" +
+                                  "    reverse_proxy 192.168.1.13:8000\n" +
+                                  "}\n";
+                        break;
+                        
+                    case "flame":
+                        fileName = "flame_bookmarks.json";
+                        content = "{\n" +
+                                  "  \"bookmarks\": [\n" +
+                                  "    {\n" +
+                                  "      \"name\": \"Service 1\",\n" +
+                                  "      \"url\": \"http://service-1." + domainSuffix + "\",\n" +
+                                  "      \"icon\": \"mdi-server\",\n" +
+                                  "      \"description\": \"Service 1 Description\"\n" +
+                                  "    },\n" +
+                                  "    {\n" +
+                                  "      \"name\": \"Service 2\",\n" +
+                                  "      \"url\": \"http://service-2." + domainSuffix + "\",\n" +
+                                  "      \"icon\": \"mdi-database\",\n" +
+                                  "      \"description\": \"Service 2 Description\"\n" +
+                                  "    },\n" +
+                                  "    {\n" +
+                                  "      \"name\": \"Service 3\",\n" +
+                                  "      \"url\": \"http://service-3." + domainSuffix + "\",\n" +
+                                  "      \"icon\": \"mdi-docker\",\n" +
+                                  "      \"description\": \"Service 3 Description\"\n" +
+                                  "    }\n" +
+                                  "  ]\n" +
+                                  "}";
+                        break;
+                        
+                    case "homepage":
+                        fileName = "homepage_services.yaml";
+                        content = "# Generated by HomeStack on " + now.ToString("d MMMM yyyy") + "\n" +
+                                  "---\n" +
+                                  "services:\n" +
+                                  "  - Services:\n" +
+                                  "    - Service 1:\n" +
+                                  "        icon: server\n" +
+                                  "        href: http://service-1." + domainSuffix + "\n" +
+                                  "        description: Service 1 Description\n" +
+                                  "        ping: 192.168.1.11\n" +
+                                  "    - Service 2:\n" +
+                                  "        icon: database\n" +
+                                  "        href: http://service-2." + domainSuffix + "\n" +
+                                  "        description: Service 2 Description\n" +
+                                  "        ping: 192.168.1.12\n" +
+                                  "    - Service 3:\n" +
+                                  "        icon: docker\n" +
+                                  "        href: http://service-3." + domainSuffix + "\n" +
+                                  "        description: Service 3 Description\n" +
+                                  "        ping: 192.168.1.13\n";
+                        break;
+                }
+                
+                configurations.Add(new ConfigOutput
+                {
+                    Key = type,
+                    FileName = fileName,
+                    Content = content,
+                    Timestamp = now,
+                    CanApply = canApply
+                });
+            }
+            
+            // Show the first configuration
+            if (configurations.Count > 0)
+            {
+                var firstSelectedType = selectedTypes.First();
+                selectedConfigType = firstSelectedType;
+                currentConfig = configurations.First(c => c.Key == firstSelectedType).Content;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error generating configurations: {ex.Message}");
+        }
+        finally
+        {
+            isGenerating = false;
+        }
+    }
+    
+    private void SelectConfigType(string configType)
+    {
+        selectedConfigType = configType;
+        
+        // Update the current config display
+        var config = configurations.FirstOrDefault(c => c.Key == configType);
+        if (config != null)
+        {
+            currentConfig = config.Content;
+        }
+        else
+        {
+            currentConfig = "";
+        }
+    }
+    
+    private void ToggleConfigSelection(ChangeEventArgs e, string configType)
+    {
+        if (e.Value is bool value)
+        {
+            configSelections[configType] = value;
+        }
+    }
+    
+    private void SelectAllConfigs()
+    {
+        foreach (var key in configSelections.Keys.ToList())
+        {
+            configSelections[key] = true;
+        }
+    }
+    
+    private void UnselectAllConfigs()
+    {
+        foreach (var key in configSelections.Keys.ToList())
+        {
+            configSelections[key] = false;
+        }
+    }
+    
+    private void ViewConfig(string configType)
+    {
+        SelectConfigType(configType);
+    }
+    
+    private void CopyToClipboard(string? configType = null)
+    {
+        // In a real implementation, this would copy the configuration to the clipboard
+        Console.WriteLine($"Copied {configType ?? selectedConfigType} configuration to clipboard");
+    }
+    
+    private void DownloadConfig(string? configType = null)
+    {
+        // In a real implementation, this would download the configuration file
+        Console.WriteLine($"Downloaded {configType ?? selectedConfigType} configuration");
+    }
+    
+    private async Task ApplyConfig(string configType)
+    {
+        try
+        {
+            isGenerating = true;
+            
+            // In a real implementation, this would call the API to apply the configuration
+            await Task.Delay(1500); // Simulate API call
+            
+            Console.WriteLine($"Applied {configType} configuration");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error applying configuration: {ex.Message}");
+        }
+        finally
+        {
+            isGenerating = false;
+        }
+    }
+    
+    private string FormatFileSize(int bytes)
+    {
+        if (bytes < 1024)
+        {
+            return $"{bytes} B";
+        }
+        else if (bytes < 1024 * 1024)
+        {
+            return $"{bytes / 1024.0:F1} KB";
+        }
+        else
+        {
+            return $"{bytes / (1024.0 * 1024.0):F1} MB";
+        }
+    }
+    
+    private class ConfigOutput
+    {
+        public string Key { get; set; } = "";
+        public string FileName { get; set; } = "";
+        public string Content { get; set; } = "";
+        public DateTime Timestamp { get; set; }
+        public bool CanApply { get; set; }
+    }
+}

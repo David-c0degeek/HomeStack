@@ -1,7 +1,347 @@
-﻿@page "/"
+@page "/"
+@inject HttpClient Http
 
-<PageTitle>Home</PageTitle>
+<PageTitle>HomeStack - Dashboard</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>HomeStack Dashboard</h1>
+            <p class="lead">Your homelab infrastructure at a glance</p>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" @onclick="Refresh">
+                <span class="bi bi-arrow-clockwise"></span> Refresh
+            </button>
+        </div>
+    </div>
 
-Welcome to your new app.
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Service Health</h5>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="d-flex justify-content-center my-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (serviceHealth != null && serviceHealth.Count > 0)
+                    {
+                        <div class="d-flex flex-column">
+                            <div class="d-flex justify-content-between mb-3">
+                                <span>Healthy</span>
+                                <span class="badge bg-success">@healthyCount</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-3">
+                                <span>Unhealthy</span>
+                                <span class="badge bg-danger">@unhealthyCount</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Unknown</span>
+                                <span class="badge bg-secondary">@unknownCount</span>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center my-4">
+                            <p>No service health data available.</p>
+                            <button class="btn btn-sm btn-primary" @onclick="Refresh">Refresh</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Docker Containers</h5>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="d-flex justify-content-center my-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (containers != null && containers.Count > 0)
+                    {
+                        <div class="d-flex flex-column">
+                            <div class="d-flex justify-content-between mb-3">
+                                <span>Total Containers</span>
+                                <span class="badge bg-primary">@containers.Count</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-3">
+                                <span>Running</span>
+                                <span class="badge bg-success">@containers.Count(c => c.IsRunning)</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Stopped</span>
+                                <span class="badge bg-danger">@containers.Count(c => !c.IsRunning)</span>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center my-4">
+                            <p>No container data available.</p>
+                            <button class="btn btn-sm btn-primary" @onclick="Refresh">Refresh</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">System Information</h5>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="d-flex justify-content-center my-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="d-flex flex-column">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Last Scan</span>
+                                <span>@(scanResults?.ScanTimestamp.ToString("g") ?? "Never")</span>
+                            </div>
+                            
+                            @if (scanResults?.UnraidInfo != null)
+                            {
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Unraid Host</span>
+                                    <span>@scanResults.UnraidInfo.Hostname</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Unraid Version</span>
+                                    <span>@scanResults.UnraidInfo.Version</span>
+                                </div>
+                            }
+                            
+                            @if (scanResults?.PfSenseInfo != null)
+                            {
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>pfSense Host</span>
+                                    <span>@scanResults.PfSenseInfo.Hostname</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>pfSense Version</span>
+                                    <span>@scanResults.PfSenseInfo.Version</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>DNS Entries</span>
+                                    <span class="badge bg-info">@(scanResults.PfSenseInfo.DnsHostOverrides?.Count ?? 0)</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Recent Services</h5>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="d-flex justify-content-center my-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (containers != null && containers.Count > 0)
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>IP Address</th>
+                                        <th>Ports</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var container in containers.Take(5))
+                                    {
+                                        <tr>
+                                            <td>@container.Name</td>
+                                            <td>@container.IpAddress</td>
+                                            <td>
+                                                @foreach (var port in container.Ports.Take(3))
+                                                {
+                                                    <span class="badge bg-secondary me-1">@port.ContainerPort</span>
+                                                }
+                                                @if (container.Ports.Count > 3)
+                                                {
+                                                    <span class="badge bg-light text-dark">+@(container.Ports.Count - 3)</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (container.IsRunning)
+                                                {
+                                                    <span class="badge bg-success">Running</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-danger">Stopped</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary me-1">Details</button>
+                                                @if (container.Ports.Any() && !string.IsNullOrEmpty(container.IpAddress))
+                                                {
+                                                    var port = container.Ports.FirstOrDefault()?.ContainerPort ?? 80;
+                                                    <a href="http://@container.IpAddress:@port" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                                        Open
+                                                    </a>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        @if (containers.Count > 5)
+                        {
+                            <div class="text-center mt-3">
+                                <a href="services" class="btn btn-outline-primary">View All Services</a>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center my-4">
+                            <p>No services available.</p>
+                            <button class="btn btn-primary" @onclick="StartScan">Scan Network</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool isLoading = true;
+    private ScanResults? scanResults;
+    private List<ContainerInfo> containers = new List<ContainerInfo>();
+    private Dictionary<string, ServiceHealth> serviceHealth = new Dictionary<string, ServiceHealth>();
+    
+    private int healthyCount => serviceHealth.Count(h => h.Value.Status == ServiceStatus.Healthy);
+    private int unhealthyCount => serviceHealth.Count(h => h.Value.Status == ServiceStatus.Unhealthy);
+    private int unknownCount => serviceHealth.Count(h => h.Value.Status == ServiceStatus.Unknown);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            isLoading = true;
+            // In a real implementation, this would call the API to get the data
+            // For now, we'll use sample data
+            await Task.Delay(1000); // Simulate API call
+            
+            // Create sample data for testing
+            scanResults = new ScanResults
+            {
+                ScanTimestamp = DateTime.Now,
+                Containers = new List<ContainerInfo>(),
+                PfSenseInfo = new PfSenseInfo
+                {
+                    Hostname = "pfsense.local",
+                    Version = "2.7.0",
+                    DnsHostOverrides = new List<DnsHostOverride>()
+                }
+            };
+            
+            // Add some sample containers
+            for (int i = 1; i <= 8; i++)
+            {
+                var container = new ContainerInfo
+                {
+                    Id = $"container{i}",
+                    Name = $"service-{i}",
+                    IpAddress = $"192.168.1.{i + 10}",
+                    IsRunning = i % 3 != 0, // Make some containers stopped
+                    Ports = new List<PortMapping>()
+                };
+                
+                // Add some ports
+                for (int p = 0; p < (i % 5) + 1; p++)
+                {
+                    container.Ports.Add(new PortMapping
+                    {
+                        ContainerPort = 8000 + p * 100,
+                        HostPort = 8000 + p * 100,
+                        Protocol = "tcp"
+                    });
+                }
+                
+                scanResults.Containers.Add(container);
+                
+                // Add health status
+                var health = new ServiceHealth
+                {
+                    ServiceName = container.Name,
+                    Status = i % 4 == 0 ? ServiceStatus.Unhealthy : 
+                             i % 5 == 0 ? ServiceStatus.Unknown : ServiceStatus.Healthy,
+                    LastCheckTime = DateTime.Now
+                };
+                
+                serviceHealth[container.Name] = health;
+            }
+            
+            containers = scanResults.Containers;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task Refresh()
+    {
+        await LoadData();
+    }
+    
+    private async Task StartScan()
+    {
+        isLoading = true;
+        // In a real implementation, this would call the API to start a scan
+        await Task.Delay(2000); // Simulate scanning
+        await LoadData();
+    }
+}

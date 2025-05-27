@@ -1,0 +1,583 @@
+@page "/services"
+@inject HttpClient Http
+
+<PageTitle>HomeStack - Services</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>Services</h1>
+            <p class="lead">Manage your homelab services and containers</p>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" @onclick="Refresh">
+                <span class="bi bi-arrow-clockwise"></span> Refresh
+            </button>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Filters</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="status-all" checked @onchange="ToggleAllStatus">
+                            <label class="form-check-label" for="status-all">All</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="status-running" 
+                                   checked="@statusFilters["running"]" 
+                                   @onchange="@((e) => ToggleStatusFilter(e, "running"))">
+                            <label class="form-check-label" for="status-running">Running</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="status-stopped" 
+                                   checked="@statusFilters["stopped"]" 
+                                   @onchange="@((e) => ToggleStatusFilter(e, "stopped"))">
+                            <label class="form-check-label" for="status-stopped">Stopped</label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="search" class="form-label">Search</label>
+                        <input type="text" class="form-control" id="search" placeholder="Service name..." 
+                               @bind="searchTerm" @bind:event="oninput">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Sort By</label>
+                        <select class="form-select" @bind="sortBy">
+                            <option value="name">Name</option>
+                            <option value="status">Status</option>
+                            <option value="ip">IP Address</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Container List</h5>
+                        <span class="badge bg-light text-dark">@filteredContainers.Count containers</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="d-flex justify-content-center my-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (filteredContainers.Count > 0)
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>IP Address</th>
+                                        <th>Ports</th>
+                                        <th>Status</th>
+                                        <th>Health</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var container in filteredContainers)
+                                    {
+                                        <tr>
+                                            <td>@container.Name</td>
+                                            <td>@container.IpAddress</td>
+                                            <td>
+                                                @foreach (var port in container.Ports.Take(3))
+                                                {
+                                                    <span class="badge bg-secondary me-1">@port.ContainerPort</span>
+                                                }
+                                                @if (container.Ports.Count > 3)
+                                                {
+                                                    <span class="badge bg-light text-dark">+@(container.Ports.Count - 3)</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (container.IsRunning)
+                                                {
+                                                    <span class="badge bg-success">Running</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-danger">Stopped</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (serviceHealth.TryGetValue(container.Name, out var health))
+                                                {
+                                                    @if (health.Status == ServiceStatus.Healthy)
+                                                    {
+                                                        <span class="badge bg-success">Healthy</span>
+                                                    }
+                                                    else if (health.Status == ServiceStatus.Unhealthy)
+                                                    {
+                                                        <span class="badge bg-danger">Unhealthy</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-secondary">Unknown</span>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary">Unknown</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <div class="btn-group">
+                                                    <button class="btn btn-sm btn-outline-primary" @onclick="() => ViewDetails(container)">
+                                                        <span class="bi bi-info-circle"></span>
+                                                    </button>
+                                                    @if (container.Ports.Any() && !string.IsNullOrEmpty(container.IpAddress))
+                                                    {
+                                                        var port = container.Ports.FirstOrDefault()?.ContainerPort ?? 80;
+                                                        <a href="http://@container.IpAddress:@port" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                                            <span class="bi bi-box-arrow-up-right"></span>
+                                                        </a>
+                                                    }
+                                                    @if (container.IsRunning)
+                                                    {
+                                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => StopContainer(container)">
+                                                            <span class="bi bi-stop-circle"></span>
+                                                        </button>
+                                                    }
+                                                    else
+                                                    {
+                                                        <button class="btn btn-sm btn-outline-success" @onclick="() => StartContainer(container)">
+                                                            <span class="bi bi-play-circle"></span>
+                                                        </button>
+                                                    }
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center my-4">
+                            <p>No services match your filters.</p>
+                            <button class="btn btn-sm btn-primary" @onclick="ClearFilters">Clear Filters</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (selectedContainer != null)
+{
+    <div class="modal fade show" style="display: block;" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@selectedContainer.Name Details</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <h6>Basic Information</h6>
+                            <dl class="row">
+                                <dt class="col-sm-4">ID</dt>
+                                <dd class="col-sm-8">@selectedContainer.Id</dd>
+                                
+                                <dt class="col-sm-4">Image</dt>
+                                <dd class="col-sm-8">@selectedContainer.Image</dd>
+                                
+                                <dt class="col-sm-4">Status</dt>
+                                <dd class="col-sm-8">
+                                    @if (selectedContainer.IsRunning)
+                                    {
+                                        <span class="badge bg-success">Running</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">Stopped</span>
+                                    }
+                                </dd>
+                                
+                                <dt class="col-sm-4">IP Address</dt>
+                                <dd class="col-sm-8">@selectedContainer.IpAddress</dd>
+                                
+                                <dt class="col-sm-4">VPN Isolated</dt>
+                                <dd class="col-sm-8">
+                                    @if (selectedContainer.IsVpnIsolated)
+                                    {
+                                        <span class="badge bg-info">Yes</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">No</span>
+                                    }
+                                </dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Port Mappings</h6>
+                            @if (selectedContainer.Ports.Count > 0)
+                            {
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Container Port</th>
+                                            <th>Host Port</th>
+                                            <th>Protocol</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var port in selectedContainer.Ports)
+                                        {
+                                            <tr>
+                                                <td>@port.ContainerPort</td>
+                                                <td>@port.HostPort</td>
+                                                <td>@port.Protocol</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            }
+                            else
+                            {
+                                <p class="text-muted">No port mappings defined.</p>
+                            }
+                        </div>
+                    </div>
+                    
+                    @if (selectedContainer.Labels.Count > 0)
+                    {
+                        <div class="row mb-3">
+                            <div class="col">
+                                <h6>Labels</h6>
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Key</th>
+                                            <th>Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var label in selectedContainer.Labels)
+                                        {
+                                            <tr>
+                                                <td>@label.Key</td>
+                                                <td>@label.Value</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    }
+                    
+                    <div class="row">
+                        <div class="col">
+                            <h6>Health Check</h6>
+                            @if (serviceHealth.TryGetValue(selectedContainer.Name, out var health))
+                            {
+                                <dl class="row">
+                                    <dt class="col-sm-3">Status</dt>
+                                    <dd class="col-sm-9">
+                                        @if (health.Status == ServiceStatus.Healthy)
+                                        {
+                                            <span class="badge bg-success">Healthy</span>
+                                        }
+                                        else if (health.Status == ServiceStatus.Unhealthy)
+                                        {
+                                            <span class="badge bg-danger">Unhealthy</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Unknown</span>
+                                        }
+                                    </dd>
+                                    
+                                    <dt class="col-sm-3">Last Check</dt>
+                                    <dd class="col-sm-9">@health.LastCheckTime.ToString("g")</dd>
+                                    
+                                    @if (!string.IsNullOrEmpty(health.ErrorMessage))
+                                    {
+                                        <dt class="col-sm-3">Error</dt>
+                                        <dd class="col-sm-9">@health.ErrorMessage</dd>
+                                    }
+                                </dl>
+                            }
+                            else
+                            {
+                                <p class="text-muted">No health check information available.</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">Close</button>
+                    
+                    @if (selectedContainer.Ports.Any() && !string.IsNullOrEmpty(selectedContainer.IpAddress))
+                    {
+                        var port = selectedContainer.Ports.FirstOrDefault()?.ContainerPort ?? 80;
+                        <a href="http://@selectedContainer.IpAddress:@port" target="_blank" class="btn btn-primary">
+                            Open Service
+                        </a>
+                    }
+                    
+                    @if (selectedContainer.IsRunning)
+                    {
+                        <button type="button" class="btn btn-danger" @onclick="() => StopContainer(selectedContainer)">Stop Container</button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-success" @onclick="() => StartContainer(selectedContainer)">Start Container</button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    private bool isLoading = true;
+    private List<ContainerInfo> containers = new List<ContainerInfo>();
+    private List<ContainerInfo> filteredContainers = new List<ContainerInfo>();
+    private Dictionary<string, ServiceHealth> serviceHealth = new Dictionary<string, ServiceHealth>();
+    private Dictionary<string, bool> statusFilters = new Dictionary<string, bool>
+    {
+        { "running", true },
+        { "stopped", true }
+    };
+    private string searchTerm = "";
+    private string sortBy = "name";
+    private ContainerInfo? selectedContainer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        ApplyFilters();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            isLoading = true;
+            // In a real implementation, this would call the API to get the data
+            // For now, we'll use sample data
+            await Task.Delay(1000); // Simulate API call
+            
+            // Create sample data for testing
+            containers = new List<ContainerInfo>();
+            
+            // Add some sample containers
+            for (int i = 1; i <= 12; i++)
+            {
+                var container = new ContainerInfo
+                {
+                    Id = $"container{i}",
+                    Name = $"service-{i}",
+                    Image = $"image/service-{i}:{(i % 3 == 0 ? "latest" : $"1.0.{i}")}",
+                    IpAddress = $"192.168.1.{i + 10}",
+                    IsRunning = i % 3 != 0, // Make some containers stopped
+                    IsVpnIsolated = i % 5 == 0,
+                    Ports = new List<PortMapping>(),
+                    Labels = new Dictionary<string, string>()
+                };
+                
+                // Add some ports
+                for (int p = 0; p < (i % 5) + 1; p++)
+                {
+                    container.Ports.Add(new PortMapping
+                    {
+                        ContainerPort = 8000 + p * 100,
+                        HostPort = 8000 + p * 100,
+                        Protocol = "tcp"
+                    });
+                }
+                
+                // Add some labels
+                container.Labels.Add("com.docker.compose.project", "homelab");
+                container.Labels.Add("com.docker.compose.service", container.Name);
+                if (i % 4 == 0)
+                {
+                    container.Labels.Add("traefik.enable", "true");
+                    container.Labels.Add("traefik.http.routers." + container.Name + ".rule", "Host(`" + container.Name + ".local`)");
+                }
+                
+                containers.Add(container);
+                
+                // Add health status
+                var health = new ServiceHealth
+                {
+                    ServiceName = container.Name,
+                    Status = i % 4 == 0 ? ServiceStatus.Unhealthy : 
+                             i % 5 == 0 ? ServiceStatus.Unknown : ServiceStatus.Healthy,
+                    LastCheckTime = DateTime.Now,
+                    ErrorMessage = i % 4 == 0 ? "Container exited with code 1" : null
+                };
+                
+                serviceHealth[container.Name] = health;
+            }
+            
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        // Apply status filters
+        var filtered = containers.Where(c =>
+            (c.IsRunning && statusFilters["running"]) ||
+            (!c.IsRunning && statusFilters["stopped"])).ToList();
+        
+        // Apply search filter
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            filtered = filtered.Where(c =>
+                c.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                c.IpAddress?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true ||
+                c.Image?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true
+            ).ToList();
+        }
+        
+        // Apply sorting
+        switch (sortBy)
+        {
+            case "name":
+                filtered = filtered.OrderBy(c => c.Name).ToList();
+                break;
+            case "status":
+                filtered = filtered.OrderByDescending(c => c.IsRunning).ThenBy(c => c.Name).ToList();
+                break;
+            case "ip":
+                filtered = filtered.OrderBy(c => c.IpAddress).ToList();
+                break;
+        }
+        
+        filteredContainers = filtered;
+    }
+
+    private void ToggleAllStatus(ChangeEventArgs e)
+    {
+        if (e.Value is bool value)
+        {
+            foreach (var key in statusFilters.Keys.ToList())
+            {
+                statusFilters[key] = value;
+            }
+            ApplyFilters();
+        }
+    }
+
+    private void ToggleStatusFilter(ChangeEventArgs e, string filter)
+    {
+        if (e.Value is bool value)
+        {
+            statusFilters[filter] = value;
+            ApplyFilters();
+        }
+    }
+
+    private void ClearFilters()
+    {
+        searchTerm = "";
+        foreach (var key in statusFilters.Keys.ToList())
+        {
+            statusFilters[key] = true;
+        }
+        sortBy = "name";
+        ApplyFilters();
+    }
+
+    private async Task Refresh()
+    {
+        await LoadData();
+    }
+    
+    private void ViewDetails(ContainerInfo container)
+    {
+        selectedContainer = container;
+    }
+    
+    private void CloseModal()
+    {
+        selectedContainer = null;
+    }
+    
+    private async Task StartContainer(ContainerInfo container)
+    {
+        try
+        {
+            // In a real implementation, this would call the API to start the container
+            await Task.Delay(500); // Simulate API call
+            
+            // Update the container status
+            container.IsRunning = true;
+            ApplyFilters();
+            
+            if (selectedContainer == container)
+            {
+                // Force UI update for the modal
+                selectedContainer = null;
+                selectedContainer = container;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error starting container: {ex.Message}");
+        }
+    }
+    
+    private async Task StopContainer(ContainerInfo container)
+    {
+        try
+        {
+            // In a real implementation, this would call the API to stop the container
+            await Task.Delay(500); // Simulate API call
+            
+            // Update the container status
+            container.IsRunning = false;
+            ApplyFilters();
+            
+            if (selectedContainer == container)
+            {
+                // Force UI update for the modal
+                selectedContainer = null;
+                selectedContainer = container;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error stopping container: {ex.Message}");
+        }
+    }
+}
